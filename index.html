@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本格派 LINE風リアルタイムChat (絵文字＆通知確定版)</title>
+    <title>本格派 LINE風リアルタイムChat (通話＆安全ガード確定版)</title>
     <style>
         :root {
             --line-bg: #7494c0;
@@ -28,15 +28,22 @@
         .content.active { display: flex; flex-direction: column; }
         
         /* チャット画面 */
-        #chat { padding: 0; }
-        .chat-room-info { background: rgba(0,0,0,0.15); color: white; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 500; }
+        #chat { padding: 0; position: relative; }
+        .chat-room-info { background: rgba(0,0,0,0.15); color: white; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 500; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        
+        /* 📞 通話コントロールUI */
+        .btn-call { background: #007bff; color: white; border: none; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-call.incall { background: #ff3b30; }
+        
         .sync-status { background: rgba(0, 0, 0, 0.3); color: #ffc107; text-align: center; padding: 4px; font-size: 11px; font-weight: bold; }
-        .typing-indicator { background: rgba(37, 211, 102, 0.2); color: #fff; text-align: center; padding: 3px; font-size: 12px; font-weight: bold; display: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        
+        /* 💬 入力中表示（パレットに被らないよう上部に固定） */
+        .typing-indicator { background: rgba(255, 255, 255, 0.9); color: var(--line-dark); text-align: center; padding: 6px; font-size: 12px; font-weight: bold; display: none; border-bottom: 1px solid rgba(0,0,0,0.1); box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 5; }
         
         .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 120px; box-sizing: border-box; }
         
         /* メッセージレイアウト */
-        .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 6px; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: bold; min-width: 85px; text-align: right; }
+        .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 6px; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: bold; min-width: 85px; text-align: right; line-height: 1.2; }
         .msg-row { display: flex; width: 100%; justify-content: flex-end; align-items: flex-end; }
         .msg-row.friend { justify-content: flex-start; }
         
@@ -49,10 +56,10 @@
         .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; color: #000; }
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; color: #000; }
         
-        /* 🌟 特大絵文字メッセージ（絵文字だけの時はLINEのように大きく表示） */
+        /* 特大絵文字メッセージ */
         .msg.big-emoji { background: none !important; box-shadow: none !important; font-size: 35px; padding: 4px 0; }
         
-        /* 🌟 ワンタップ絵文字パレット（入力エリア上部に設置） */
+        /* ワンタップ絵文字パレット */
         .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 6px; border-top: 1px solid #ddd; position: absolute; bottom: 50px; width: 100%; box-sizing: border-box; z-index: 9; }
         .emoji-stamp { font-size: 22px; cursor: pointer; transition: transform 0.1s; -webkit-user-select: none; user-select: none; }
         .emoji-stamp:active { transform: scale(1.3); }
@@ -63,6 +70,14 @@
         .input-area input:focus { border-color: var(--line-green); }
         .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 8px 18px; border-radius: 22px; cursor: pointer; font-weight: bold; font-size: 14px; height: 36px; }
         
+        /* 📞 通話着信ポップアップモーダル */
+        .call-modal { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -30%); background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; z-index: 100; display: none; width: 260px; }
+        .call-modal h4 { margin: 0 0 10px 0; color: var(--line-dark); }
+        .call-modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        .call-btn { border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; color: white; }
+        .call-btn.accept { background: var(--line-green); }
+        .call-btn.decline { background: #ff3b30; }
+
         /* 接続設定画面 */
         #friends { background: #ffffff; padding: 24px; }
         h3 { font-size: 16px; color: var(--line-dark); border-left: 4px solid var(--line-green); padding-left: 8px; margin-top: 0; margin-bottom: 12px; }
@@ -94,13 +109,30 @@
         <div class="tab" onclick="switchTab('friends', '接続設定')">接続設定</div>
     </div>
 
+    <!-- 1. トーク画面 -->
     <div id="chat" class="content active">
-        <div class="chat-room-info" id="chat-with-name">まだ誰とも繋がっていません</div>
+        <div class="chat-room-info">
+            <span id="chat-with-name">まだ誰とも繋がっていません</span>
+            <!-- 📞 通話ボタン（デフォルト非表示、接続後に有効化） -->
+            <button id="call-toggle-btn" class="btn-call" onclick="toggleVoiceCall()" style="display:none;">📞 通話</button>
+        </div>
         <div class="sync-status" id="sync-status">❌ 未接続 (お互いに5桁の入力かQR待ち)</div>
+        
+        <!-- 💬 改善されたメッセージ入力中表示バー -->
         <div class="typing-indicator" id="typing-indicator">💬 相手が入力中...</div>
         
         <div class="chat-box" id="chat-box"></div>
 
+        <!-- 📞 通話着信ポップアップ -->
+        <div class="call-modal" id="call-modal">
+            <h4>📞 友達から着信中...</h4>
+            <div class="call-modal-btns">
+                <button class="call-btn accept" onclick="answerCall()">出る</button>
+                <button class="call-btn decline" onclick="declineCall()">切る</button>
+            </div>
+        </div>
+
+        <!-- ワンタップ絵文字パレット -->
         <div class="emoji-palette">
             <span class="emoji-stamp" onclick="sendEmojiStamp('👍')">👍</span>
             <span class="emoji-stamp" onclick="sendEmojiStamp('🙌')">🙌</span>
@@ -118,6 +150,7 @@
         </div>
     </div>
 
+    <!-- 2. 接続設定画面 -->
     <div id="friends" class="content">
         <h3>あなたの情報</h3>
         <div class="profile-box" id="my-name-display" style="white-space: pre-line;">ログイン中...</div>
@@ -140,6 +173,9 @@
     </div>
 </div>
 
+<!-- 隠しオーディオ要素（通話用） -->
+<audio id="remote-audio" autoplay></audio>
+
 <script>
     let myRoomId = localStorage.getItem("p2p_room_id");
     let myName = localStorage.getItem("my_chat_name") || "ユーザー_" + Math.random().toString(36).substring(2, 5);
@@ -152,25 +188,34 @@
 
     let peer = null;
     let conn = null;
+    let currentCall = null;
+    let localStream = null;
     let chatHistory = [];
     let html5QrcodeScanner = null;
     let typingTimeout = null;
     let isCurrentTabChat = true;
 
-    // 起動時にローカル履歴をロード
+    // 🌟 暴言・不適切ワードのブラックリスト
+    const BANNED_WORDS = [/死ね/g, /しね/g, /殺す/g, /ころす/g, /バカ/g, /ばか/g, /きもい/g, /キモい/g, /糞/g, /くそ/g];
+
+    // 🌟 暴言をかわいいハートに自動変換する安全エンジン
+    function filterBannedWords(text) {
+        let filteredText = text;
+        BANNED_WORDS.forEach(regex => {
+            filteredText = filteredText.replace(regex, (match) => "💖".repeat(match.length));
+        });
+        return filteredText;
+    }
+
     const savedLogs = localStorage.getItem(`p2p_history_${myRoomId}`);
     if (savedLogs) chatHistory = JSON.parse(savedLogs);
 
-    // 🌟 画面離脱検知
     let isPageVisible = true;
     document.addEventListener("visibilitychange", () => {
         isPageVisible = (document.visibilityState === "visible");
-        if (isPageVisible && isCurrentTabChat) {
-            sendReadReceiptAll();
-        }
+        if (isPageVisible && isCurrentTabChat) { sendReadReceiptAll(); }
     });
 
-    // 🌟 画面外通知の許可
     if ("Notification" in window) {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
@@ -227,6 +272,12 @@
         });
 
         peer.on('connection', (connection) => { setupConnection(connection); });
+        
+        // 🌟 電話の着信を待ち受けるイベント処理
+        peer.on('call', (call) => {
+            currentCall = call;
+            document.getElementById('call-modal').style.display = "block";
+        });
 
         peer.on('error', (err) => {
             if (err.type === 'unavailable-id') { connectAsGuest(targetRoomId); }
@@ -243,6 +294,12 @@
                 setupConnection(connection);
             }, 500);
         });
+        
+        // 🌟 ゲスト側でも電話着信を受けられるように設定
+        peer.on('call', (call) => {
+            currentCall = call;
+            document.getElementById('call-modal').style.display = "block";
+        });
     }
 
     function setupConnection(connection) {
@@ -251,16 +308,19 @@
             document.getElementById('sync-status').innerText = `🟢 P2P直結成功！通信状態：極めて良好`;
             document.getElementById('sync-status').style.color = "#25d366";
             document.getElementById('chat-with-name').innerText = `🟢 トーク中 (部屋番号: ${localStorage.getItem("p2p_room_id")})`;
+            document.getElementById('call-toggle-btn').style.display = "inline-block"; // 📞 通話ボタンを解禁
             switchTab('chat', 'トーク');
             sendReadReceiptAll();
         });
 
         conn.on('data', (data) => {
             if (data.type === 'msg') {
-                chatHistory.push({ id: data.id, sender: 'friend', text: data.text, readTime: null });
+                // 暴言フィルターを通す
+                const safeText = filterBannedWords(data.text);
+                chatHistory.push({ id: data.id, sender: 'friend', text: safeText, readTime: null });
                 saveAndRender();
                 if (isCurrentTabChat && isPageVisible) { sendReadReceiptAll(); }
-                triggerPushNotification("新着メッセージ", data.text);
+                triggerPushNotification("新着メッセージ", safeText);
             }
             else if (data.type === 'read') {
                 chatHistory.forEach(msg => {
@@ -271,11 +331,16 @@
             else if (data.type === 'typing') {
                 document.getElementById('typing-indicator').style.display = data.isTyping ? "block" : "none";
             }
+            else if (data.type === 'call_decline') {
+                alert("通話が切断されました。");
+                resetCallUI();
+            }
         });
 
         conn.on('close', () => {
             document.getElementById('sync-status').innerText = `❌ 切断されました。再度同じ5桁で接続してください`;
             document.getElementById('sync-status').style.color = "#ff3b30";
+            document.getElementById('call-toggle-btn').style.display = "none";
         });
     }
 
@@ -289,149 +354,56 @@
         if (text.length > 0) {
             conn.send({ type: 'typing', isTyping: true });
             clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => { conn.send({ type: 'typing', isTyping: false }); }, 3000);
+            typingTimeout = setTimeout(() => { conn.send({ type: 'typing', isTyping: false }); }, 2000);
         } else {
             conn.send({ type: 'typing', isTyping: false });
         }
     };
 
-    // 🌟 🎁 スタンプ風絵文字を一発で大送信する軽量システム
+    // ワンタップ絵文字送信
     window.sendEmojiStamp = function(emoji) {
         if (!conn || !conn.open) return alert("相手と接続してから送信してください。");
         const msgId = Math.random().toString(36).substring(2, 9);
-
         conn.send({ type: 'msg', id: msgId, text: emoji });
         chatHistory.push({ id: msgId, sender: 'me', text: emoji, readTime: null });
         saveAndRender();
     };
 
-    window.connectByCode = function() {
-        const targetId = document.getElementById('friend-code-input').value.trim();
-        if (targetId.length !== 5 || isNaN(targetId)) return alert('5桁の数字を入力してください。');
-        localStorage.setItem("p2p_room_id", targetId);
-        document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${targetId}】`;
-        generateQR(targetId);
-        initP2P(targetId);
-    };
+    // 🌟 📞 ボイス通話（発信・切断）の切り替えシステム
+    window.toggleVoiceCall = function() {
+        if (!conn || !conn.open) return alert("相手と通信が繋がっていません。");
 
-    window.startCameraScan = function() {
-        document.getElementById("reader").innerHTML = "";
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        html5QrcodeScanner.start(
-            { facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 } },
-            (decodedText) => {
-                html5QrcodeScanner.stop().then(() => { window.location.href = decodedText; });
-            }, () => {}
-        ).catch(() => { alert("カメラ権限をオンにしてください。"); });
-    };
+        const callBtn = document.getElementById('call-toggle-btn');
 
-    window.sendMsg = function() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        if (text === '') return;
-        const msgId = Math.random().toString(36).substring(2, 9);
-
-        if (conn && conn.open) {
-            conn.send({ type: 'msg', id: msgId, text: text });
-            conn.send({ type: 'typing', isTyping: false });
+        // すでに通話中の場合は「切断」
+        if (currentCall) {
+            if(conn && conn.open) conn.send({ type: 'call_decline' });
+            currentCall.close();
+            resetCallUI();
+            return;
         }
-        chatHistory.push({ id: msgId, sender: 'me', text: text, readTime: null });
-        saveAndRender();
-        input.value = '';
-    };
 
-    // 絵文字1文字だけかどうかを判定する関数
-    function isOnlyEmoji(str) {
-        const emojiReg = /^[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F251}\u{2b50}]+$/u;
-        return emojiReg.test(str) && charLength(str) <= 2;
-    }
-    function charLength(str) {
-        return [...str].length;
-    }
-
-    function saveAndRender() {
-        const currentRoom = localStorage.getItem("p2p_room_id");
-        localStorage.setItem(`p2p_history_${currentRoom}`, JSON.stringify(chatHistory));
-        renderMessages();
-    }
-
-    function renderMessages() {
-        const chatBox = document.getElementById('chat-box');
-        chatBox.innerHTML = "";
-        const now = Date.now();
-
-        chatHistory.forEach((msg) => {
-            const msgRow = document.createElement('div');
-            msgRow.className = msg.sender === 'me' ? "msg-row" : "msg-row friend";
-
-            const statusArea = document.createElement('div');
-            statusArea.className = "msg-status-area";
+        // 通話開始処理（マイクの許可取得）
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream) => {
+            localStream = stream;
+            callBtn.innerText = "🛑 切る";
+            callBtn.classList.add('incall');
             
-            if (msg.sender === 'me') {
-                if (msg.readTime) {
-                    const diffSec = Math.floor((now - msg.readTime) / 1000);
-                    if (diffSec < 5) statusArea.innerText = "既読\n(たった今)";
-                    else if (diffSec < 60) statusArea.innerText = `既読\n(${diffSec}秒前)`;
-                    else statusArea.innerText = `既独立\n(${Math.floor(diffSec / 60)}分前)`;
-                    statusArea.style.color = "#85e29e";
-                } else {
-                    statusArea.innerText = "未読";
-                    statusArea.style.color = "rgba(255,255,255,0.5)";
-                }
-                msgRow.appendChild(statusArea);
-            }
-
-            const wrapper = document.createElement('div');
-            wrapper.className = msg.sender === 'me' ? "msg-wrapper me" : "msg-wrapper friend";
+            // 相手のPeerIDに対して通話をかける
+            currentCall = peer.call(conn.peer, stream);
             
-            if(msg.sender !== 'me') {
-                const nameLabel = document.createElement('div');
-                nameLabel.className = "sender-name";
-                nameLabel.innerText = "友達";
-                wrapper.appendChild(nameLabel);
-            }
+            currentCall.on('stream', (remoteStream) => {
+                document.getElementById('remote-audio').srcObject = remoteStream;
+            });
             
-            const msgEl = document.createElement('div');
-            
-            // 🌟 もし絵文字1文字だけならスタンプ風に特大表示、それ以外なら通常のメッセージ
-            if (isOnlyEmoji(msg.text)) {
-                msgEl.className = msg.sender === 'me' ? "msg me big-emoji" : "msg friend big-emoji";
-            } else {
-                msgEl.className = msg.sender === 'me' ? "msg me" : "msg friend";
-            }
-            msgEl.innerText = msg.text;
-            
-            wrapper.appendChild(msgEl);
-            msgRow.appendChild(wrapper);
-            chatBox.appendChild(msgRow);
+            currentCall.on('close', () => { resetCallUI(); });
+        }).catch((err) => {
+            alert("マイクのアクセスを許可してください。");
         });
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+    };
 
-    setInterval(() => {
-        if (isCurrentTabChat && conn && conn.open) { renderMessages(); }
-    }, 1000);
-
-    window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlRoomId = urlParams.get('room');
-        const urlRole = urlParams.get('role');
+    // 🌟 📞 電話に「出る」ときの処理
+    window.answerCall = function() {
+        document.getElementById('call-modal').style.display = "none";
         
-        let shouldForceGuest = false;
-        if (urlRoomId && urlRoomId.length === 5 && !isNaN(urlRoomId)) {
-            myRoomId = urlRoomId;
-            localStorage.setItem("p2p_room_id", myRoomId);
-            document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
-            if (urlRole === 'guest') { shouldForceGuest = true; }
-            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
-        }
-
-        generateQR(myRoomId);
-        renderMessages();
-        initP2P(myRoomId, shouldForceGuest);
-    });
-</script>
-
-</body>
-</html>
+   
