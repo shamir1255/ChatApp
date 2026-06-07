@@ -188,7 +188,7 @@
 </div>
 
 <audio id="remote-audio" autoplay></audio>
-<script>
+    <script>
     let myCode = localStorage.getItem("my_friend_code_3digit");
     if (!myCode || myCode.length !== 3 || isNaN(myCode)) {
         myCode = Math.floor(100 + Math.random() * 900).toString();
