@@ -30,6 +30,7 @@
         /* チャット画面 */
         #chat { padding: 0; }
         .chat-room-info { background: rgba(0,0,0,0.15); color: white; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 500; }
+        .sync-status { background: rgba(0, 0, 0, 0.3); color: #25d366; text-align: center; padding: 4px; font-size: 11px; font-weight: bold; }
         .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; box-sizing: border-box; }
         
         /* メッセージ吹き出し */
@@ -54,14 +55,18 @@
         
         /* コード入力フォーム */
         .code-input-group { display: flex; gap: 8px; margin-bottom: 24px; }
-        .code-input-group input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; }
+        .code-input-group input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; text-align: center; font-weight: bold; letter-spacing: 2px; }
         .code-input-group input:focus { border-color: var(--line-dark); }
         .btn-connect { padding: 12px 20px; background: var(--line-dark); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         
         /* QRエリア */
-        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0 24px 0; background: #ffffff; padding: 15px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); min-height: 180px; }
+        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0 20px 0; background: #ffffff; padding: 15px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); min-height: 180px; }
         #qrcode { padding: 10px; background: white; }
         
+        /* カメラスキャン領域 */
+        .btn-camera { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 24px; }
+        #reader { width: 100%; max-width: 300px; margin: 10px auto; border-radius: 8px; overflow: hidden; }
+
         /* 通知・友達状態カード */
         .notice-card { background: #fff3cd; padding: 16px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
         .notice-card p { margin: 0 0 12px 0; font-size: 14px; color: #664d03; }
@@ -70,6 +75,7 @@
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
 
@@ -83,6 +89,7 @@
 
     <div id="chat" class="content active">
         <div class="chat-room-info" id="chat-with-name">まだ誰とも繋がっていません</div>
+        <div class="sync-status" id="sync-status">📡 通信待機中...</div>
         <div class="chat-box" id="chat-box"></div>
         <div class="input-area">
             <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()">
@@ -94,22 +101,25 @@
         <h3>マイプロフィール</h3>
         <div class="profile-box" id="my-name-display" style="white-space: pre-line;">ログイン中...</div>
 
-        <h3>① ユーザーコードで友達追加</h3>
+        <h3>① 5桁数字コードで友達追加</h3>
         <div class="code-input-group">
-            <input type="text" id="friend-code-input" placeholder="友達のコードを入力">
+            <input type="text" id="friend-code-input" placeholder="5桁の数字（例: 12345）" maxlength="5">
             <button class="btn-connect" onclick="connectByCode()">追加</button>
         </div>
 
         <h3>② QRコードで友達追加</h3>
+        <button class="btn-camera" onclick="startCameraScan()">📷 相手のQRコードをスキャンする</button>
+        <div id="reader"></div>
+        
         <div class="qr-area">
             <div id="qrcode"></div>
+            <p style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">あなたのQRコード</p>
         </div>
         
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
         <h3>届いた通知・友達状態</h3>
-        <div id="notifications">
-            </div>
+        <div id="notifications"></div>
     </div>
 </div>
 
@@ -130,11 +140,13 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 🔒 1. ログイン情報と自分のIDを【スマホのローカルネットワーク】にガチ保存
+    // 🔒 ログイン情報と自分のIDをスマホのローカル記憶域にガチ保存
     let myId = localStorage.getItem("my_chat_id");
     let myName = localStorage.getItem("my_chat_name");
-    if (!myId) {
-        myId = "CODE_" + Math.random().toString(36).substring(2, 7).toUpperCase();
+    
+    // 🌟 5桁の数字コードに完全限定化
+    if (!myId || myId.startsWith("code_") || isNaN(myId) || myId.length !== 5) {
+        myId = Math.floor(10000 + Math.random() * 90000).toString(); // 必ず10000〜99999の5桁数字
         myName = "ユーザー_" + Math.random().toString(36).substring(2, 5);
         localStorage.setItem("my_chat_id", myId);
         localStorage.setItem("my_chat_name", myName);
@@ -143,33 +155,32 @@
     let activeFriendId = localStorage.getItem("active_friend_id") || null;
     let activeFriendName = localStorage.getItem("active_friend_name") || "";
     let updateIntervalId = null;
+    let html5QrcodeScanner = null;
 
-    // 🔒 2. チャット履歴をローカルから復元する処理
+    // 🔒 チャット履歴をローカルから超高速復元
     function loadLocalMessages(roomId) {
         const localData = localStorage.getItem(`chat_history_${roomId}`);
         if (localData) {
-            const messages = JSON.parse(localData);
-            renderMessagesRaw(messages, activeFriendName);
+            renderMessagesRaw(JSON.parse(localData), activeFriendName);
         }
     }
 
-    // 🔒 3. 友達の接続状態リストもローカル保存から即座に復元して描画
     function loadLocalFriends() {
         const friendId = localStorage.getItem("active_friend_id");
         const friendName = localStorage.getItem("active_friend_name");
         const reqList = document.getElementById('notifications');
         if (friendId && friendName) {
-            reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendName} と友達です（ローカル同期済）</p>`;
+            reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendName} (${friendId}) と友達です</p>`;
         } else {
-            reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>通知はありません。コード入力かQRコードで友達を追加してね！</p>";
+            reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>通知はありません。5桁数字かQRコードで追加してね！</p>";
         }
     }
 
-    // 🌟 4. 通信エラーを無視して「その場」で1秒でQRコードを強制生成
+    // 🌟 スマホ内部だけで一瞬でQRコードを強制自社生成
     function generateQR() {
         const currentUrl = window.location.href.split('?')[0];
         const inviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
-        document.getElementById("qrcode").innerHTML = ""; // 初期化
+        document.getElementById("qrcode").innerHTML = "";
         new QRCode(document.getElementById("qrcode"), {
             text: inviteUrl,
             width: 160,
@@ -178,7 +189,7 @@
         });
     }
 
-    // タブ切り替え関数をバインド
+    // ボタン関数をwindowにバインドして全滅フリーズを完全防止
     window.switchTab = function(tabId, title) {
         document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
@@ -191,21 +202,39 @@
         document.getElementById('page-title').innerText = title;
     };
 
-    // コードで友達追加
+    // 🌟 カメラを起動してリアルタイムにQRコードを読み取る機能
+    window.startCameraScan = function() {
+        document.getElementById("reader").innerHTML = ""; // 初期化
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        html5QrcodeScanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 220, height: 220 } },
+            (decodedText) => {
+                html5QrcodeScanner.stop().then(() => {
+                    window.location.href = decodedText; // 読み取ったURLに瞬間ジャンプして追加完了
+                });
+            },
+            () => {}
+        ).catch(() => {
+            alert("カメラの起動に失敗しました。ブラウザのカメラ権限をオンにしてください。");
+        });
+    };
+
+    // 5桁数字コードで手動友達追加
     window.connectByCode = async function() {
         const targetId = document.getElementById('friend-code-input').value.trim();
-        if (!targetId) return alert('ユーザーコードを入力してください。');
-        if (targetId === myId) return alert('自分のコードは入力できません。');
+        if (targetId.length !== 5 || isNaN(targetId)) return alert('5桁の数字コードを正しく入力してください。');
+        if (targetId === myId) return alert('自分のコードは追加できません。');
 
         try {
             const userDoc = await getDoc(doc(db, "users", targetId));
-            if (!userDoc.exists()) return alert('コードが見つかりません。');
+            if (!userDoc.exists()) return alert('その5桁コードのユーザーは見つかりません。');
 
             const targetName = userDoc.data().name || "友達";
             await requestFriend(targetId, targetName);
             document.getElementById('friend-code-input').value = "";
         } catch (e) {
-            alert('接続エラー。コードを手動で繋ぎ直します。');
+            alert('接続エラー。もう一度お試しください。');
         }
     };
 
@@ -216,10 +245,9 @@
             [targetId]: { name: targetName, active: false },
             lastUpdated: new Date()
         }, { merge: true });
-        alert(`リクエスト送信！\n相手があなたのコードを入力するか承認するとトークが開始されます。`);
+        alert(`数字コード「${targetId}」へ申請を送りました！\n相手があなたの5桁コードを入力するか、承認ボタンを押すとチャットが始まります。`);
     }
 
-    // メッセージを画面に流し込む生の処理
     function renderMessagesRaw(msgArray, friendName) {
         const chatBox = document.getElementById('chat-box');
         chatBox.innerHTML = "";
@@ -244,43 +272,46 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Firestoreの形式から配列を作ってローカルに永久保存する処理
     function serializeAndSaveMessages(snapshot, roomId, friendName) {
         const msgArray = [];
-        snapshot.forEach((doc) => {
-            msgArray.push(doc.data());
-        });
-        // 🔒 ローカルストレージにガチ保存
+        snapshot.forEach((doc) => { msgArray.push(doc.data()); });
         localStorage.setItem(`chat_history_${roomId}`, JSON.stringify(msgArray));
         renderMessagesRaw(msgArray, friendName);
     }
 
-    // トークルーム開始
+    // トークルーム同期開始
     function startChat(friendId, friendName) {
         activeFriendId = friendId;
         activeFriendName = friendName;
         localStorage.setItem("active_friend_id", friendId);
         localStorage.setItem("active_friend_name", friendName);
 
-        document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName}`;
+        document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName} (${friendId})`;
         const roomId = [myId, friendId].sort().join("_");
 
-        // 🔥 まずローカルに保存されている過去ログを爆速で描画（読み込み中で止まらない！）
         loadLocalMessages(roomId);
 
         const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
         
-        // Firebaseのリアルタイム監視
+        // リアルタイム接続イベント
         onSnapshot(q, (snapshot) => { 
-            serializeAndSaveMessages(snapshot, roomId, friendName); 
+            serializeAndSaveMessages(snapshot, roomId, friendName);
+            document.getElementById('sync-status').innerText = `🟢 通信状態: 良好（自動更新中）`;
+            document.getElementById('sync-status').style.color = "#25d366";
         });
 
-        // 2秒毎の強制更新
+        // 🌟 2秒に1回の「強制手動問い合わせ」と「通信ランプ」の同期化
         if (updateIntervalId) clearInterval(updateIntervalId);
         updateIntervalId = setInterval(async () => {
             if (!activeFriendId) return;
             const snapshot = await getDocs(q);
             serializeAndSaveMessages(snapshot, roomId, friendName);
+            
+            // 🌟 リアルタイムに相手と通信が成功している証拠を画面上に刻印する
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('sync-status').innerText = `🟢 通信状態: 良好（${timeStr} 定期同期成功）`;
+            document.getElementById('sync-status').style.color = "#85e29e";
         }, 2000);
     }
 
@@ -298,25 +329,20 @@
         input.value = '';
     };
 
-    // 画面初期化の超高速起動ルート
+    // 初期起動ルーチン
     window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('my-name-display').innerText = `${myName}\n【あなたのコード: ${myId}】`;
+        document.getElementById('my-name-display').innerText = `${myName}\n【あなたの5桁コード: ${myId}】`;
         
-        // 1. 起動して0.1秒でスマホ内部だけでQRコードを描画（絶対失敗しない）
         generateQR();
-
-        // 2. 友達リストの初期状態をローカルから1発で出す（ずっと読み込み中になるのを完全打破）
         loadLocalFriends();
 
-        // 3. もしすでにトーク中の友達がローカルに保存されていれば自動でチャット画面を開く
         if (activeFriendId && activeFriendName) {
             startChat(activeFriendId, activeFriendName);
         }
 
-        // Firebaseへのユーザー登録（裏でそっとやる）
         setDoc(doc(db, "users", myId), { name: myName }, { merge: true }).catch(()=>{});
 
-        // URLパラメータの追加チェック
+        // URLパラメータ（QRコード読み取り）での自動追加ルート
         const urlParams = new URLSearchParams(window.location.search);
         const addTargetId = urlParams.get('add');
         const addTargetName = urlParams.get('name');
@@ -325,7 +351,7 @@
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
         }
 
-        // クラウド上のマッチング監視（きたらローカルを上書きする）
+        // マッチングサーバー監視
         onSnapshot(collection(db, "friends_match"), (snapshot) => {
             const reqList = document.getElementById('notifications');
             let hasNotice = false;
@@ -345,10 +371,10 @@
                         reqList.innerHTML = `
                             <div class="notice-card">
                                 <p>👥 <strong>${friendData.name}</strong> (${friendId}) から追加されました！</p>
-                                <button class="btn-accept" id="accept-btn-new">承認してトークを始める</button>
+                                <button class="btn-accept" id="accept-btn-v3">承認してトークを始める</button>
                             </div>`;
 
-                        document.getElementById('accept-btn-new').onclick = async () => {
+                        document.getElementById('accept-btn-v3').onclick = async () => {
                             await updateDoc(doc(db, "friends_match", matchKey), { [`${myId}.active`]: true });
                             startChat(friendId, friendData.name);
                         };
@@ -356,7 +382,7 @@
                     
                     if (myData.active === true && friendData.active === true) {
                         hasNotice = true;
-                        reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} と友達です</p>`;
+                        reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} (${friendId}) と友達です</p>`;
                         startChat(friendId, friendData.name);
                     }
                 }
