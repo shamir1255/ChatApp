@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (極小圧縮)</title>
+    <title>LINE風P2P (写真・名前変更版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
-        body { font-family: sans-serif; margin: 0; background: #f4f5f7; }
+        body { font-family: sans-serif; margin: 0; background: #f4f5f7; user-select: none; }
         .container { max-width: 500px; margin: 0 auto; background: var(--bg); height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         .header { background: var(--dark); color: white; text-align: center; font-weight: bold; font-size: 14px; height: 38px; line-height: 38px; }
         .tab-menu { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; }
@@ -16,13 +16,12 @@
         .content { flex: 1; overflow-y: auto; display: none; background: #fff; }
         .content.active { display: block; }
         .list-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f8f8f8; cursor: pointer; }
-        .avatar { width: 34px; height: 34px; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .avatar { width: 34px; height: 34px; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; background: #95a5a6; font-size: 12px; }
         .item-info { flex: 1; min-width: 0; font-size: 12px; }
         .badge { background: #ff3b30; color: white; border-radius: 9px; padding: 1px 5px; font-size: 10px; font-weight: bold; }
-        .settings-pane { padding: 14px; font-size: 12px; }
-        .my-code { font-size: 22px; font-weight: bold; letter-spacing: 2px; background: #e9ecef; padding: 4px 12px; border-radius: 6px; display: inline-block; margin: 5px 0; }
-        .add-friend-group { display: flex; gap: 6px; margin-top: 10px; }
-        .add-friend-group input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; text-align: center; }
+        .settings-pane { padding: 14px; font-size: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .setting-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #eee; }
+        .settings-pane input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; text-align: center; width: 100%; box-sizing: border-box; }
         .btn { padding: 8px 12px; background: var(--dark); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         #chat-window { display: none; flex-direction: column; height: 100%; background: var(--bg); position: absolute; width: 100%; z-index: 20; }
         .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -31,36 +30,45 @@
         .msg { padding: 6px 10px; border-radius: 12px; max-width: 70%; word-break: break-all; }
         .msg.me { background: #85e29e; border-top-right-radius: 2px; }
         .msg.friend { background: #fff; border-top-left-radius: 2px; }
+        .msg img { max-width: 100%; border-radius: 8px; display: block; margin: 2px 0; }
         .status { font-size: 9px; color: rgba(255,255,255,0.7); margin-right: 4px; text-align: right; }
         .left-back-btn { position: absolute; left: 0; top: 40%; width: 34px; height: 50px; background: rgba(30,42,56,0.85); color: white; border: none; border-radius: 0 8px 8px 0; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 40; }
-        .compact-input-cluster { position: absolute; right: 12px; top: 62%; display: flex; flex-direction: column; gap: 6px; z-index: 30; }
-        .compact-input-cluster input { width: 54px; height: 54px; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-size: 11px; text-align: center; outline: none; }
-        .compact-input-cluster button { width: 54px; height: 38px; border: none; background: var(--green); color: white; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .compact-input-cluster button:disabled { background: #95a5a6; }
+        .compact-input-cluster { position: absolute; right: 12px; top: 55%; display: flex; flex-direction: column; gap: 5px; z-index: 30; }
+        .compact-input-cluster input[type="text"] { width: 54px; height: 54px; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-size: 11px; text-align: center; outline: none; background: #fff; }
+        .compact-input-cluster button { width: 54px; height: 34px; border: none; background: var(--green); color: white; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .compact-input-cluster .btn-img { background: #3498db; height: 34px; font-size: 14px; display: flex; align-items: center; justify-content: center; }
         .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; transition: .3s; }
         .loading-box { background: #fff; padding: 20px; border-radius: 12px; text-align: center; width: 200px; font-size: 12px; }
         .bar-bg { background: #e0e0e0; height: 6px; border-radius: 3px; overflow: hidden; margin: 10px 0; }
-        .bar-fill { background: var(--green); height: 100%; width: 0%; transition: width 0.1s linear; }
+        .bar-fill { background: var(--green); height: 100%; width: 0%; transition: width 0.05s linear; }
     </style>
 </head>
 <body>
 
-<div class="overlay" id="loader"><div class="loading-box">⚙️ 高速読込システム<div class="bar-bg"><div class="bar-fill" id="bar"></div></div><div id="status">読込中... (0/10MB)</div></div></div>
+<div class="overlay" id="loader"><div class="loading-box">⚙️ 高速読込システム<div class="bar-bg"><div class="bar-fill" id="bar"></div></div><div id="status">読込中... (0/20MB)</div></div></div>
 
 <div class="container">
     <div class="header" id="main-title">トーク一覧</div>
     <div class="tab-menu" id="tabs">
         <div class="tab active" id="t-chats" onclick="tab('chats')">トーク</div>
-        <div class="tab" id="t-friends" onclick="tab('friends')">友達追加</div>
+        <div class="tab" id="t-friends" onclick="tab('friends')">設定・追加</div>
     </div>
     <div id="v-chats" class="content active"><div id="chats-list"></div></div>
-    <div id="v-friends" class="content"><div class="settings-pane">あなたのコード:<br><div class="my-code" id="my-code">---</div><br>友達追加:<div class="add-friend-group"><input type="text" id="f-input" placeholder="3桁" maxlength="3"><button class="btn" onclick="addFriend()">追加</button></div></div></div>
+    <div id="v-friends" class="content">
+        <div class="settings-pane">
+            <div class="setting-box">あなたのコード: <strong id="my-code">---</strong></div>
+            <div class="setting-box">名前変更:<br><input type="text" id="name-input" placeholder="自分の名前" onchange="updateMyName()"></div>
+            <div class="setting-box">友達の追加:<div class="add-friend-group"><input type="text" id="f-input" placeholder="3桁コード" maxlength="3"><button class="btn" onclick="addFriend()">追加</button></div></div>
+        </div>
+    </div>
 
     <div id="chat-window">
         <button class="left-back-btn" onclick="closeChat()">◀<br>戻<br>る</button>
         <div class="chat-box" id="chat-box"></div>
         <div class="compact-input-cluster">
-            <input type="text" id="msg-input" placeholder="入力" maxlength="30" onkeypress="if(event.key==='Enter') sendMsg()">
+            <input type="file" id="file-input" accept="image/*" style="display:none" onchange="sendImage(this)">
+            <button class="btn-img" onclick="document.getElementById('file-input').click()">📷</button>
+            <input type="text" id="msg-input" placeholder="入力" maxlength="500" onkeypress="if(event.key==='Enter') sendMsg()">
             <button id="send-btn" onclick="sendMsg()">送信</button>
         </div>
     </div>
@@ -68,25 +76,28 @@
 
 <script>
     let myCode = localStorage.getItem("code3") || Math.floor(100 + Math.random() * 900).toString();
+    let myName = localStorage.getItem("myName") || "ユーザー(" + myCode + ")";
     localStorage.setItem("code3", myCode);
     document.getElementById("my-code").innerText = myCode;
+    document.getElementById("name-input").value = myName;
 
     const PREFIX = "line_m3_";
     let db = JSON.parse(localStorage.getItem("db3")) || {};
     let peer = null, conns = {}, activeCode = null, cooling = false;
 
+    // ⚡ 20MBの事前読み込み演出
     function preload(cb) {
-        let size = 0;
+        let size = 0, total = 20;
         let i = setInterval(() => {
             size += 2;
-            document.getElementById("bar").style.width = (size/10)*100 + "%";
-            document.getElementById("status").innerText = `読込中... (${size}/10MB)`;
-            if(size >= 10) {
+            document.getElementById("bar").style.width = (size/total)*100 + "%";
+            document.getElementById("status").innerText = `読込中... (${size}/${total}MB)`;
+            if(size >= total) {
                 clearInterval(i);
                 document.getElementById("loader").style.opacity = "0";
-                setTimeout(() => { document.getElementById("loader").style.display="none"; cb(); }, 300);
+                setTimeout(() => { document.getElementById("loader").style.display="none"; cb(); }, 200);
             }
-        }, 100);
+        }, 50);
     }
 
     function initPeer() {
@@ -100,16 +111,19 @@
     }
 
     function setup(c, code) {
-        if (!db[code]) db[code] = { code: code, history: [], unread: 0 };
+        if (!db[code]) db[code] = { code: code, name: "友達(" + code + ")", history: [], unread: 0 };
         c.on('open', () => {
             conns[code] = c;
-            flushBox(code);
-            renderList();
+            c.send({ type: 'sync-name', name: myName }); // 接続時に名前を通知
+            flushBox(code); renderList();
         });
         c.on('data', d => {
-            if (d.type === 'msg') {
+            if (d.type === 'sync-name') {
+                db[code].name = d.name; save(); renderList();
+                if(activeCode === code) document.getElementById("main-title").innerText = d.name;
+            } else if (d.type === 'msg') {
                 if (db[code].history.some(m => m.id === d.id)) return;
-                db[code].history.push({ id: d.id, sender: 'friend', text: d.text, read: null });
+                db[code].history.push({ id: d.id, sender: 'friend', text: d.text, isImg: d.isImg, read: null });
                 if (activeCode === code && document.visibilityState === "visible") c.send({type:'read', t:Date.now()});
                 else db[code].unread++;
                 save(); renderList(); if(activeCode===code) renderMsgs();
@@ -121,10 +135,16 @@
         c.on('close', () => { delete conns[code]; renderList(); });
     }
 
+    function updateMyName() {
+        myName = document.getElementById("name-input").value.trim() || "ユーザー(" + myCode + ")";
+        localStorage.setItem("myName", myName);
+        Object.keys(conns).forEach(c => { if(conns[c].open) conns[c].send({ type: 'sync-name', name: myName }); });
+    }
+
     function flushBox(code) {
         let mb = JSON.parse(localStorage.getItem("mb3")) || [];
         if (conns[code]?.open) {
-            mb.filter(m => m.to === code).forEach(m => conns[code].send({type:'msg', id:m.id, text:m.text}));
+            mb.filter(m => m.to === code).forEach(m => conns[code].send({type:'msg', id:m.id, text:m.text, isImg:m.isImg}));
             localStorage.setItem("mb3", JSON.stringify(mb.filter(m => m.to !== code)));
         }
     }
@@ -132,9 +152,8 @@
     function addFriend() {
         let c = document.getElementById("f-input").value.trim();
         if(c.length!==3 || c===myCode || db[c]) return;
-        db[c] = { code: c, history: [], unread: 0 }; save();
-        setup(peer.connect(PREFIX + c, {reliable:true}), c);
-        tab('chats');
+        db[c] = { code: c, name: "友達(" + c + ")", history: [], unread: 0 }; save();
+        setup(peer.connect(PREFIX + c, {reliable:true}), c); tab('chats');
     }
 
     function tab(name) {
@@ -142,19 +161,18 @@
         document.getElementById("v-friends").classList.toggle("active", name==='friends');
         document.getElementById("t-chats").classList.toggle("active", name==='chats');
         document.getElementById("t-friends").classList.toggle("active", name==='friends');
-        document.getElementById("main-title").innerText = name==='chats' ? "トーク一覧" : "友達追加";
+        document.getElementById("main-title").innerText = name==='chats' ? "トーク一覧" : "設定・追加";
         if(name==='chats') renderList();
     }
 
     function renderList() {
-        let container = document.getElementById("chats-list");
-        container.innerHTML = "";
+        let container = document.getElementById("chats-list"); container.innerHTML = "";
         Object.keys(db).forEach(c => {
-            let f = db[c], online = conns[c]?.open, last = f.history[f.history.length-1]?.text || "履歴なし";
-            let item = document.createElement("div");
-            item.className = "list-item";
+            let f = db[c], online = conns[c]?.open, last = f.history[f.history.length-1];
+            let txt = last ? (last.isImg ? "[写真]" : last.text) : "履歴なし";
+            let item = document.createElement("div"); item.className = "list-item";
             item.onclick = () => openChat(c);
-            item.innerHTML = `<div class="avatar" style="background:${online?'#25d366':'#95a5a6'}">👤</div><div class="item-info"><b>ID: ${c}</b> (${online?'ON':'OFF'})<br><span style="color:#888">${last}</span></div>${f.unread?`<div class="badge">${f.unread}</div>`:''}`;
+            item.innerHTML = `<div class="avatar" style="background:${online?'#25d366':'#95a5a6'}">👤</div><div class="item-info"><b>${f.name}</b><br><span style="color:#888;font-size:11px;">${txt}</span></div>${f.unread?`<div class="badge">${f.unread}</div>`:''}`;
             container.appendChild(item);
         });
     }
@@ -163,37 +181,55 @@
         activeCode = code;
         document.getElementById("chat-window").style.display = "flex";
         document.getElementById("tabs").style.display = "none";
-        document.getElementById("main-title").innerText = "ID: " + code;
+        document.getElementById("main-title").innerText = db[code].name;
         db[code].unread = 0; save();
         if(conns[code]?.open) conns[code].send({type:'read', t:Date.now()});
         renderMsgs();
     }
 
-    function closeChat() {
-        activeCode = null;
-        document.getElementById("chat-window").style.display = "none";
-        document.getElementById("tabs").style.display = "flex";
-        tab('chats');
-    }
+    function closeChat() { activeCode = null; document.getElementById("chat-window").style.display = "none"; document.getElementById("tabs").style.display = "flex"; tab('chats'); }
 
     function sendMsg() {
         if(cooling || !activeCode) return;
         let input = document.getElementById('msg-input'), text = input.value.trim();
         if(!text) return;
+        executeSend(text, false);
+        input.value = '';
+    }
 
+    // 📷 写真送信処理（超軽量圧縮化）
+    function sendImage(input) {
+        if (!input.files || !input.files[0] || !activeCode) return;
+        let reader = new FileReader();
+        reader.onload = function (e) {
+            let img = new Image();
+            img.src = e.target.result;
+            img.onload = function () {
+                let canvas = document.createElement('canvas');
+                let max = 300; // 軽量化のため最大幅300pxに縮小
+                let w = img.width, h = img.height;
+                if (w > h) { if (w > max) { h *= max / w; w = max; } }
+                else { if (h > max) { w *= max / h; h = max; } }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                executeSend(canvas.toDataURL('image/jpeg', 0.5), true); // 画質50%圧縮
+            };
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+    }
+
+    function executeSend(payload, isImg) {
         cooling = true; document.getElementById('send-btn').disabled = true;
         let id = Math.random().toString(36).substring(2,9);
-
-        if(conns[activeCode]?.open) conns[activeCode].send({type:'msg', id:id, text:text});
+        if(conns[activeCode]?.open) conns[activeCode].send({type:'msg', id:id, text:payload, isImg:isImg});
         else {
             let mb = JSON.parse(localStorage.getItem("mb3")) || [];
-            mb.push({to:activeCode, id:id, text:text});
-            localStorage.setItem("mb3", JSON.stringify(mb));
+            mb.push({to:activeCode, id:id, text:payload, isImg:isImg}); localStorage.setItem("mb3", JSON.stringify(mb));
         }
-
-        db[activeCode].history.push({ id:id, sender:'me', text:text, read:null });
-        save(); renderMsgs(); input.value = '';
-        setTimeout(() => { cooling = false; document.getElementById('send-btn').disabled = false; }, 1000);
+        db[activeCode].history.push({ id:id, sender:'me', text:payload, isImg:isImg, read:null });
+        save(); renderMsgs();
+        setTimeout(() => { cooling = false; document.getElementById('send-btn').disabled = false; }, 500);
     }
 
     function renderMsgs() {
@@ -202,12 +238,11 @@
         db[activeCode].history.forEach(m => {
             let row = document.createElement('div'); row.className = `msg-row ${m.sender==='me'?'':'friend'}`;
             if(m.sender==='me') {
-                let st = document.createElement('div'); st.className = "status";
-                st.innerText = m.read ? "既読" : "未読";
-                row.appendChild(st);
+                let st = document.createElement('div'); st.className = "status"; st.innerText = m.read ? "既読" : "未読"; row.appendChild(st);
             }
             let el = document.createElement('div'); el.className = `msg ${m.sender==='me'?'me':'friend'}`;
-            el.innerText = m.text; row.appendChild(el); box.appendChild(row);
+            if(m.isImg) { el.innerHTML = `<img src="${m.text}">`; } else { el.innerText = m.text; }
+            row.appendChild(el); box.appendChild(row);
         });
         box.scrollTop = box.scrollHeight;
     }
