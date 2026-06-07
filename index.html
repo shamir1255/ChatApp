@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本格派 LINE風リアルタイムChat (フル機能確定版)</title>
+    <title>本格派 LINE風リアルタイムChat (絵文字＆通知確定版)</title>
     <style>
         :root {
             --line-bg: #7494c0;
@@ -33,7 +33,7 @@
         .sync-status { background: rgba(0, 0, 0, 0.3); color: #ffc107; text-align: center; padding: 4px; font-size: 11px; font-weight: bold; }
         .typing-indicator { background: rgba(37, 211, 102, 0.2); color: #fff; text-align: center; padding: 3px; font-size: 12px; font-weight: bold; display: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
-        .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; box-sizing: border-box; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 120px; box-sizing: border-box; }
         
         /* メッセージレイアウト */
         .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 6px; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: bold; min-width: 85px; text-align: right; }
@@ -49,18 +49,19 @@
         .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; color: #000; }
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; color: #000; }
         
-        /* 📷 画像メッセージの個別スタイル */
-        .msg-img { max-width: 100%; max-height: 200px; border-radius: 12px; display: block; cursor: pointer; margin-top: 2px; }
+        /* 🌟 特大絵文字メッセージ（絵文字だけの時はLINEのように大きく表示） */
+        .msg.big-emoji { background: none !important; box-shadow: none !important; font-size: 35px; padding: 4px 0; }
         
-        /* 入力エリア（写真ボタン内包） */
-        .input-area { display: flex; padding: 10px 12px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 10; align-items: center; gap: 6px; }
-        
-        /* 📷 画像選択隠しボタン */
-        .btn-image-trigger { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 4px; display: flex; align-items: center; justify-content: center; outline: none; }
-        
-        .input-area input { flex: 1; padding: 10px 16px; border: 1px solid #ddd; border-radius: 22px; outline: none; font-size: 15px; background: white; }
+        /* 🌟 ワンタップ絵文字パレット（入力エリア上部に設置） */
+        .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 6px; border-top: 1px solid #ddd; position: absolute; bottom: 50px; width: 100%; box-sizing: border-box; z-index: 9; }
+        .emoji-stamp { font-size: 22px; cursor: pointer; transition: transform 0.1s; -webkit-user-select: none; user-select: none; }
+        .emoji-stamp:active { transform: scale(1.3); }
+
+        /* 入力エリア */
+        .input-area { display: flex; padding: 10px 12px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 10; align-items: center; gap: 6px; height: 50px; }
+        .input-area input { flex: 1; padding: 8px 16px; border: 1px solid #ddd; border-radius: 22px; outline: none; font-size: 15px; background: white; }
         .input-area input:focus { border-color: var(--line-green); }
-        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 10px 18px; border-radius: 22px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 8px 18px; border-radius: 22px; cursor: pointer; font-weight: bold; font-size: 14px; height: 36px; }
         
         /* 接続設定画面 */
         #friends { background: #ffffff; padding: 24px; }
@@ -99,10 +100,19 @@
         <div class="typing-indicator" id="typing-indicator">💬 相手が入力中...</div>
         
         <div class="chat-box" id="chat-box"></div>
+
+        <div class="emoji-palette">
+            <span class="emoji-stamp" onclick="sendEmojiStamp('👍')">👍</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('🙌')">🙌</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('🤣')">🤣</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('🥺')">🥺</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('🔥')">🔥</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('✨')">✨</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('❤️')">❤️</span>
+            <span class="emoji-stamp" onclick="sendEmojiStamp('🎉')">🎉</span>
+        </div>
+        
         <div class="input-area">
-            <button class="btn-image-trigger" onclick="document.getElementById('file-input').click()">📷</button>
-            <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="sendImage(this)">
-            
             <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()" oninput="handleTyping()">
             <button class="send-btn" onclick="sendMsg()">送信</button>
         </div>
@@ -151,7 +161,7 @@
     const savedLogs = localStorage.getItem(`p2p_history_${myRoomId}`);
     if (savedLogs) chatHistory = JSON.parse(savedLogs);
 
-    // 🌟 画面離脱検知(通知用フラグ更新)
+    // 🌟 画面離脱検知
     let isPageVisible = true;
     document.addEventListener("visibilitychange", () => {
         isPageVisible = (document.visibilityState === "visible");
@@ -160,14 +170,13 @@
         }
     });
 
-    // 🌟 画面外プッシュ通知機能の許可要求
+    // 🌟 画面外通知の許可
     if ("Notification" in window) {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
     }
 
-    // 通知を実際に飛ばす関数
     function triggerPushNotification(title, bodyText) {
         if (!isPageVisible || !isCurrentTabChat) {
             if ("Notification" in window && Notification.permission === "granted") {
@@ -247,30 +256,18 @@
         });
 
         conn.on('data', (data) => {
-            // ① テキストメッセージ受信
             if (data.type === 'msg') {
-                chatHistory.push({ id: data.id, sender: 'friend', type: 'text', text: data.text, readTime: null });
+                chatHistory.push({ id: data.id, sender: 'friend', text: data.text, readTime: null });
                 saveAndRender();
                 if (isCurrentTabChat && isPageVisible) { sendReadReceiptAll(); }
-                // 🌟 画面を離れていたら通知を飛ばす
                 triggerPushNotification("新着メッセージ", data.text);
             }
-            // ② 📷 写真データ受信
-            else if (data.type === 'image') {
-                chatHistory.push({ id: data.id, sender: 'friend', type: 'image', text: data.imageData, readTime: null });
-                saveAndRender();
-                if (isCurrentTabChat && isPageVisible) { sendReadReceiptAll(); }
-                // 🌟 写真受信時の通知
-                triggerPushNotification("新着写真", "📷 写真が届きました");
-            }
-            // ③ 既読信号受信
             else if (data.type === 'read') {
                 chatHistory.forEach(msg => {
                     if (msg.sender === 'me' && !msg.readTime) { msg.readTime = data.time; }
                 });
                 saveAndRender();
             }
-            // ④ 入力中信号受信
             else if (data.type === 'typing') {
                 document.getElementById('typing-indicator').style.display = data.isTyping ? "block" : "none";
             }
@@ -298,27 +295,14 @@
         }
     };
 
-    // 🌟 📷 写真送信処理（Base64圧縮データ化してP2P送信）
-    window.sendImage = function(inputEl) {
-        if (!inputEl.files || !inputEl.files[0]) return;
+    // 🌟 🎁 スタンプ風絵文字を一発で大送信する軽量システム
+    window.sendEmojiStamp = function(emoji) {
         if (!conn || !conn.open) return alert("相手と接続してから送信してください。");
+        const msgId = Math.random().toString(36).substring(2, 9);
 
-        const file = inputEl.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            const base64Data = e.target.result;
-            const msgId = Math.random().toString(36).substring(2, 9);
-
-            // 相手にバイナリ圧縮データを送信
-            conn.send({ type: 'image', id: msgId, imageData: base64Data });
-
-            // 自分の画面にも追加
-            chatHistory.push({ id: msgId, sender: 'me', type: 'image', text: base64Data, readTime: null });
-            saveAndRender();
-            inputEl.value = ''; // リセット
-        };
-        reader.readAsDataURL(file);
+        conn.send({ type: 'msg', id: msgId, text: emoji });
+        chatHistory.push({ id: msgId, sender: 'me', text: emoji, readTime: null });
+        saveAndRender();
     };
 
     window.connectByCode = function() {
@@ -351,10 +335,19 @@
             conn.send({ type: 'msg', id: msgId, text: text });
             conn.send({ type: 'typing', isTyping: false });
         }
-        chatHistory.push({ id: msgId, sender: 'me', type: 'text', text: text, readTime: null });
+        chatHistory.push({ id: msgId, sender: 'me', text: text, readTime: null });
         saveAndRender();
         input.value = '';
     };
+
+    // 絵文字1文字だけかどうかを判定する関数
+    function isOnlyEmoji(str) {
+        const emojiReg = /^[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F251}\u{2b50}]+$/u;
+        return emojiReg.test(str) && charLength(str) <= 2;
+    }
+    function charLength(str) {
+        return [...str].length;
+    }
 
     function saveAndRender() {
         const currentRoom = localStorage.getItem("p2p_room_id");
@@ -379,7 +372,7 @@
                     const diffSec = Math.floor((now - msg.readTime) / 1000);
                     if (diffSec < 5) statusArea.innerText = "既読\n(たった今)";
                     else if (diffSec < 60) statusArea.innerText = `既読\n(${diffSec}秒前)`;
-                    else statusArea.innerText = `既読\n(${Math.floor(diffSec / 60)}分前)`;
+                    else statusArea.innerText = `既独立\n(${Math.floor(diffSec / 60)}分前)`;
                     statusArea.style.color = "#85e29e";
                 } else {
                     statusArea.innerText = "未読";
@@ -399,18 +392,46 @@
             }
             
             const msgEl = document.createElement('div');
-            msgEl.className = msg.sender === 'me' ? "msg me" : "msg friend";
             
-            // 🌟 メッセージのタイプ（テキストか画像か）でレンダリングを分岐
-            if (msg.type === 'image') {
-                const img = document.createElement('img');
-                img.src = msg.text;
-                img.className = "msg-img";
-                img.onclick = () => {
-                    // タップで拡大表示できる簡易ロジック
-                    const w = window.open();
-                    w.document.write(`<img src="${msg.text}" style="max-width:100%; height:auto;">`);
-                };
-                msgEl.appendChild(img);
+            // 🌟 もし絵文字1文字だけならスタンプ風に特大表示、それ以外なら通常のメッセージ
+            if (isOnlyEmoji(msg.text)) {
+                msgEl.className = msg.sender === 'me' ? "msg me big-emoji" : "msg friend big-emoji";
             } else {
-                msgEl.innerText = msg.te
+                msgEl.className = msg.sender === 'me' ? "msg me" : "msg friend";
+            }
+            msgEl.innerText = msg.text;
+            
+            wrapper.appendChild(msgEl);
+            msgRow.appendChild(wrapper);
+            chatBox.appendChild(msgRow);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    setInterval(() => {
+        if (isCurrentTabChat && conn && conn.open) { renderMessages(); }
+    }, 1000);
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRoomId = urlParams.get('room');
+        const urlRole = urlParams.get('role');
+        
+        let shouldForceGuest = false;
+        if (urlRoomId && urlRoomId.length === 5 && !isNaN(urlRoomId)) {
+            myRoomId = urlRoomId;
+            localStorage.setItem("p2p_room_id", myRoomId);
+            document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
+            if (urlRole === 'guest') { shouldForceGuest = true; }
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+        }
+
+        generateQR(myRoomId);
+        renderMessages();
+        initP2P(myRoomId, shouldForceGuest);
+    });
+</script>
+
+</body>
+</html>
