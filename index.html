@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本格派 LINE風P2Pアプリ (フレンドコード＆通話強化版)</title>
+    <title>極小スマホ最適化 LINE風P2P (数字3桁＆最強通知版)</title>
     <style>
         :root {
             --line-bg: #7494c0;
@@ -13,81 +13,91 @@
             --msg-friend: #ffffff;
             --text-dark: #333333;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Hiragino Kaku Gothic ProN, sans-serif; margin: 0; background-color: #f4f5f7; color: var(--text-dark); }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background-color: #f4f5f7; color: var(--text-dark); }
+        
+        /* 📱 全体をコンパクトに収めるコンテナ */
         .container { max-width: 500px; margin: 0 auto; background: var(--line-bg); height: 100vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.2); overflow: hidden; }
         
-        /* ヘッダー */
-        .header { background-color: var(--line-dark); color: white; padding: 16px; text-align: center; font-weight: bold; font-size: 18px; letter-spacing: 0.5px; position: relative; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
-        .back-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; display: none; font-weight: bold; }
-        .header-title { flex: 1; text-align: center; }
-        .header-spacer { width: 40px; }
+        /* 🔔 超強力：LINE風アプリ内ポップアップ通知バー */
+        .push-banner { position: absolute; top: -60px; left: 8px; right: 8px; background: rgba(26, 38, 54, 0.96); color: white; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        .push-banner.show { top: 8px; }
+        .push-avatar { width: 28px; height: 28px; background: var(--line-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        .push-content { flex: 1; overflow: hidden; }
+        .push-title { font-size: 11px; font-weight: bold; color: var(--line-green); margin-bottom: 1px; }
+        .push-text { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.95; }
 
-        /* タブメニュー（メイン画面のみ） */
+        /* ◀ 戻るボタン付きヘッダー（サイズダウン） */
+        .header { background-color: var(--line-dark); color: white; padding: 10px 12px; text-align: center; font-weight: bold; font-size: 14px; position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 38px; box-sizing: border-box; }
+        .back-btn { background: none; border: none; color: white; font-size: 13px; cursor: pointer; display: none; font-weight: bold; padding: 0; margin-right: 5px; }
+        .header-title { flex: 1; text-align: center; font-size: 14px; }
+        .header-spacer { width: 35px; }
+
+        /* タブメニュー（サイズダウン） */
         .tab-menu { display: flex; background: #ffffff; border-bottom: 1px solid #e0e0e0; position: relative; z-index: 10; }
-        .tab { flex: 1; padding: 14px; text-align: center; cursor: pointer; color: #777; font-size: 15px; font-weight: 500; transition: all 0.2s; }
-        .tab.active { color: var(--line-dark); font-weight: bold; border-bottom: 3px solid var(--line-green); }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #777; font-size: 13px; font-weight: bold; transition: all 0.2s; }
+        .tab.active { color: var(--line-dark); border-bottom: 2px solid var(--line-green); }
         
-        /* コンテンツエリア */
-        .content { flex: 1; overflow-y: auto; display: none; box-sizing: border-box; background: #ffffff; height: calc(100vh - 115px); }
+        /* コンテンツ表示エリア */
+        .content { flex: 1; overflow-y: auto; display: none; box-sizing: border-box; background: #ffffff; height: calc(100vh - 76px); }
         .content.active { display: block; }
         
-        /* 友達リスト・トーク一覧画面 */
-        .list-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
+        /* 友達・トーク一覧リスト（4まわりコンパクト化） */
+        .list-item { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f8f8f8; cursor: pointer; }
         .list-item:active { background: #f5f5f5; }
-        .avatar { width: 45px; height: 45px; background: #ccc; border-radius: 50%; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white; font-weight: bold; }
-        .item-info { flex: 1; }
-        .item-name { font-weight: bold; font-size: 15px; margin-bottom: 4px; color: #111; }
-        .item-lastmsg { font-size: 12px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
-        .badge { background: #ff3b30; color: white; border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: bold; margin-left: 6px; }
+        .avatar { width: 34px; height: 34px; background: #ccc; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; font-weight: bold; flex-shrink: 0; }
+        .item-info { flex: 1; min-width: 0; }
+        .item-name { font-weight: bold; font-size: 13px; margin-bottom: 2px; color: #111; display: flex; align-items: center; gap: 6px; }
+        .item-lastmsg { font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge { background: #ff3b30; color: white; border-radius: 9px; padding: 1px 5px; font-size: 10px; font-weight: bold; margin-left: 6px; flex-shrink: 0; }
 
-        /* 設定・マイ情報画面 */
-        .settings-pane { padding: 20px; }
-        h3 { font-size: 15px; color: var(--line-dark); border-left: 4px solid var(--line-green); padding-left: 8px; margin-top: 20px; margin-bottom: 12px; }
-        .profile-box { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; font-size: 14px; color: #333; margin-bottom: 15px; border: 1px solid #eee; }
-        .my-code { font-size: 18px; font-weight: bold; color: var(--line-dark); letter-spacing: 1px; margin-top: 5px; background: #e9ecef; padding: 6px; border-radius: 6px; display: inline-block; width: 80%; }
+        /* 設定画面（サイズダウン） */
+        .settings-pane { padding: 14px; }
+        h3 { font-size: 12px; color: var(--line-dark); border-left: 3px solid var(--line-green); padding-left: 6px; margin-top: 15px; margin-bottom: 8px; }
+        .profile-box { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; font-size: 11px; color: #555; margin-bottom: 12px; border: 1px solid #eee; }
+        .my-code { font-size: 22px; font-weight: bold; color: var(--line-dark); letter-spacing: 2px; margin-top: 4px; background: #e9ecef; padding: 4px 12px; border-radius: 6px; display: inline-block; }
         
-        .add-friend-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        .add-friend-group input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
-        .btn-action { padding: 12px 18px; background: var(--line-dark); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .add-friend-group { display: flex; gap: 6px; margin-bottom: 12px; }
+        .add-friend-group input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; outline: none; text-align: center; font-weight: bold; }
+        .btn-action { padding: 8px 14px; background: var(--line-dark); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; }
         
-        /* チャット専用画面（ここだけ背景がLINEブルー） */
+        /* 🌟 チャット専用画面（背景ブルー） */
         #chat-window { display: none; flex-direction: column; height: 100%; background: var(--line-bg); position: absolute; top: 0; left: 0; width: 100%; z-index: 20; }
-        .chat-top-bar { background: rgba(0,0,0,0.15); color: white; padding: 8px 16px; text-align: center; font-size: 13px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .btn-call { background: #007bff; color: white; border: none; padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .chat-top-bar { background: rgba(0,0,0,0.12); color: white; padding: 5px 12px; text-align: center; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .btn-call { background: #007bff; color: white; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-call.incall { background: #ff3b30; }
         
-        .typing-indicator { background: rgba(255, 255, 255, 0.95); color: var(--line-dark); text-align: center; padding: 6px; font-size: 12px; font-weight: bold; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 120px; box-sizing: border-box; }
+        .typing-indicator { background: rgba(255, 255, 255, 0.95); color: var(--line-dark); text-align: center; padding: 4px; font-size: 11px; font-weight: bold; display: none; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 85px; box-sizing: border-box; }
         
-        /* メッセージレイアウト */
-        .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 6px; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: bold; min-width: 75px; text-align: right; line-height: 1.2; }
+        /* メッセージ（4まわりコンパクト化） */
+        .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 4px; font-size: 9px; color: rgba(255,255,255,0.8); font-weight: bold; min-width: 60px; text-align: right; line-height: 1.1; }
         .msg-row { display: flex; width: 100%; justify-content: flex-end; align-items: flex-end; }
         .msg-row.friend { justify-content: flex-start; }
         
-        .msg-wrapper { display: flex; flex-direction: column; max-width: 70%; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 72%; }
         .msg-wrapper.me { align-self: flex-end; align-items: flex-end; }
         .msg-wrapper.friend { align-self: flex-start; align-items: flex-start; }
         
-        .msg { padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg { padding: 6px 10px; border-radius: 12px; font-size: 13px; line-height: 1.35; word-break: break-all; box-shadow: 0 1px 1px rgba(0,0,0,0.08); }
         .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; color: #000; }
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; color: #000; }
-        .msg.big-emoji { background: none !important; box-shadow: none !important; font-size: 38px; padding: 4px 0; }
+        .msg.big-emoji { background: none !important; box-shadow: none !important; font-size: 30px; padding: 2px 0; }
         
-        /* スタンプ風パレット */
-        .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 6px; border-top: 1px solid #ddd; position: absolute; bottom: 50px; width: 100%; box-sizing: border-box; z-index: 25; }
-        .emoji-stamp { font-size: 24px; cursor: pointer; user-select: none; transition: transform 0.1s; }
+        /* 特小絵文字スタンプパレット */
+        .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 4px; border-top: 1px solid #ddd; position: absolute; bottom: 38px; width: 100%; box-sizing: border-box; z-index: 25; }
+        .emoji-stamp { font-size: 18px; cursor: pointer; user-select: none; }
         .emoji-stamp:active { transform: scale(1.3); }
 
-        /* 入力エリア */
-        .input-area { display: flex; padding: 10px 12px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 26; align-items: center; gap: 6px; height: 50px; }
-        .input-area input { flex: 1; padding: 8px 16px; border: 1px solid #ddd; border-radius: 22px; outline: none; font-size: 15px; background: white; }
-        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 8px 18px; border-radius: 22px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        /* 特小入力エリア（高さ38pxに圧縮） */
+        .input-area { display: flex; padding: 5px 8px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 26; align-items: center; gap: 5px; height: 38px; }
+        .input-area input { flex: 1; padding: 5px 12px; border: 1px solid #ddd; border-radius: 15px; outline: none; font-size: 13px; background: white; height: 26px; box-sizing: border-box; }
+        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 0 12px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 12px; height: 26px; display: flex; align-items: center; justify-content: center; }
         
-        /* 📞 通話着信ポップアップモーダル */
-        .call-modal { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -30%); background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; z-index: 100; display: none; width: 260px; }
-        .call-modal h4 { margin: 0 0 10px 0; color: var(--line-dark); }
-        .call-modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-        .call-btn { border: none; padding: 10px 22px; border-radius: 20px; font-weight: bold; cursor: pointer; color: white; }
+        /* 着信ポップアップ */
+        .call-modal { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -25%); background: white; border-radius: 12px; padding: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); text-align: center; z-index: 100; display: none; width: 200px; }
+        .call-modal h4 { margin: 0 0 8px 0; color: var(--line-dark); font-size: 13px; }
+        .call-modal-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+        .call-btn { border: none; padding: 6px 16px; border-radius: 14px; font-weight: bold; cursor: pointer; color: white; font-size: 11px; }
         .call-btn.accept { background: var(--line-green); }
         .call-btn.decline { background: #ff3b30; }
     </style>
@@ -97,7 +107,15 @@
 <body>
 
 <div class="container">
-    <div class="header" id="main-header">
+    <div class="push-banner" id="push-banner">
+        <div class="push-avatar">💬</div>
+        <div class="push-content">
+            <div class="push-title" id="push-title">新着メッセージ</div>
+            <div class="push-text" id="push-text">内容がここに表示されます</div>
+        </div>
+    </div>
+
+    <div class="header">
         <button class="back-btn" id="back-btn" onclick="closeChatWindow()">◀ 戻る</button>
         <span class="header-title" id="main-title">トーク一覧</span>
         <div class="header-spacer" id="header-spacer"></div>
@@ -114,16 +132,16 @@
 
     <div id="view-friends" class="content">
         <div class="settings-pane">
-            <h3>あなたのフレンドコード</h3>
+            <h3>あなたの3桁フレンドコード</h3>
             <div class="profile-box">
-                相手にこのコードを教えて登録してもらおう！
-                <div class="my-code" id="my-friend-code">生成中...</div>
+                友達にこの数字を教えて登録してもらおう！
+                <br>
+                <div class="my-code" id="my-friend-code">---</div>
             </div>
 
             <h3>友達を追加する</h3>
-            <p style="font-size: 12px; color: #666; margin: -5px 0 10px 0;">相手のフレンドコードを入力してください</p>
             <div class="add-friend-group">
-                <input type="text" id="friend-code-input" placeholder="例: user_xxxxxx">
+                <input type="text" id="friend-code-input" placeholder="3桁の数字を入力" maxlength="3">
                 <button class="btn-action" onclick="addFriendAction()">追加する</button>
             </div>
         </div>
@@ -131,7 +149,7 @@
 
     <div id="chat-window">
         <div class="chat-top-bar">
-            <span id="chat-status-text">🟢 通信状態良好</span>
+            <span id="chat-status-text">🟢 接続完了</span>
             <button id="call-toggle-btn" class="btn-call" onclick="toggleVoiceCall()">📞 通話</button>
         </div>
         <div class="typing-indicator" id="typing-indicator">💬 相手が入力中...</div>
@@ -164,23 +182,24 @@
 </div>
 
 <audio id="remote-audio" autoplay></audio>
-
 <script>
-    // 🌟 1. 自分専用の一生変わらない固有フレンドコードを生成・保存
-    let myCode = localStorage.getItem("my_friend_code");
-    if (!myCode) {
-        myCode = "user_" + Math.random().toString(36).substring(2, 8);
-        localStorage.setItem("my_friend_code", myCode);
+    // 🌟 1. 自分専用の「数字3桁」のフレンドコードを自動割り当て
+    let myCode = localStorage.getItem("my_friend_code_3digit");
+    if (!myCode || myCode.length !== 3 || isNaN(myCode)) {
+        myCode = Math.floor(100 + Math.random() * 900).toString(); // 100〜999のランダム3桁
+        localStorage.setItem("my_friend_code_3digit", myCode);
     }
     document.getElementById("my-friend-code").innerText = myCode;
 
-    // 🌟 2. 友達情報＆トーク履歴をローカルに完全永続化
-    let friendsDatabase = JSON.parse(localStorage.getItem("friends_db")) || {};
-    /* 構造例: { "user_abc123": { code: "user_abc123", history: [...], unread: 0 } } */
+    // PeerJSの部屋を特定するための固有プレフィックス
+    const PEER_PREFIX = "line_mini_3d_";
+
+    // 🌟 2. ローカルデータベース完全永続化
+    let friendsDatabase = JSON.parse(localStorage.getItem("friends_db_3digit")) || {};
 
     let peer = null;
-    let activeConnMap = {}; // 繋がっているコネクションを保持 {friendCode: conn}
-    let currentActiveFriendCode = null; // 現在トーク画面を開いている相手のコード
+    let activeConnMap = {}; 
+    let currentActiveFriendCode = null; 
     let currentCall = null;
     let localStream = null;
     let typingTimeout = null;
@@ -193,54 +212,49 @@
         return filteredText;
     }
 
-    // 🌟 3. 通知の強制・絶対許可設定
+    // 🌟 3. 超強力：画面最上部にLINE通知を滑り込ませるシステム
+    function showAppNotification(title, text) {
+        const banner = document.getElementById("push-banner");
+        document.getElementById("push-title").innerText = title;
+        document.getElementById("push-text").innerText = text;
+        
+        banner.classList.add("show");
+        // 3.5秒後に自動で隠す
+        setTimeout(() => { banner.classList.remove("show"); }, 3500);
+    }
+
     document.addEventListener("visibilitychange", () => {
         isPageVisible = (document.visibilityState === "visible");
         if (isPageVisible && currentActiveFriendCode) { clearUnreadAndSync(currentActiveFriendCode); }
     });
-    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-    }
-    function triggerPushNotification(title, bodyText) {
-        if (!isPageVisible && "Notification" in window && Notification.permission === "granted") {
-            new Notification(title, { body: bodyText, icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ac.png" });
-        }
-    }
 
-    // 🌟 4. PeerJS初期化（自分のコードをそのままIDにして常時待機）
+    // 🌟 4. 通信コアエンジンの起動
     function initPeerEngine() {
-        peer = new Peer(myCode);
+        peer = new Peer(PEER_PREFIX + myCode);
 
         peer.on('open', (id) => {
-            console.log("PeerIDとしてオンライン起動:", id);
-            // 登録済みのすべての友達にバックグラウンドで自動接続を試みる
+            console.log("3桁オンライン起動完了 ID:", myCode);
             Object.keys(friendsDatabase).forEach(code => { attemptConnectToFriend(code); });
         });
 
-        // チャットメッセージ用コネクションの待ち受け
         peer.on('connection', (connection) => {
-            setupConnectionEvents(connection, connection.peer);
+            const rawId = connection.peer.replace(PEER_PREFIX, "");
+            setupConnectionEvents(connection, rawId);
         });
         
-        // 🌟 通話着信の超粘り強い待ち受け
         peer.on('call', (call) => {
             currentCall = call;
-            // 1回拒否されても何度も許可を出すためのループ関数付き応答確認
             ensureAudioPermissionAndShowModal();
         });
-
-        peer.on('error', (err) => { console.error("Peerエラー:", err); });
     }
 
-    // 友達にバックグラウンド接続をかける
     function attemptConnectToFriend(targetCode) {
-        if (activeConnMap[targetCode]) return; // 接続済みならスキップ
-        const connection = peer.connect(targetCode, { reliable: true });
+        if (activeConnMap[targetCode]) return;
+        const connection = peer.connect(PEER_PREFIX + targetCode, { reliable: true });
         setupConnectionEvents(connection, targetCode);
     }
 
     function setupConnectionEvents(connection, targetCode) {
-        // もしデータベースにない新規の相手から接続されたら自動で友達リストに追加
         if (!friendsDatabase[targetCode]) {
             friendsDatabase[targetCode] = { code: targetCode, history: [], unread: 0 };
             saveDatabase();
@@ -268,7 +282,9 @@
                 saveDatabase();
                 renderChatsList();
                 if (currentActiveFriendCode === targetCode) { renderMessages(); }
-                triggerPushNotification("新着トーク", safeText);
+                
+                // 🔔 100%通知を届けるアプリ内ポップアップの発動
+                showAppNotification(`友達(${targetCode})からのメッセージ`, safeText);
             }
             else if (data.type === 'read') {
                 friendsDatabase[targetCode].history.forEach(msg => {
@@ -283,7 +299,7 @@
                 }
             }
             else if (data.type === 'call_decline') {
-                alert("通話が終了または拒否されました。");
+                showAppNotification("通話システム", "通話が終了または拒否されました。");
                 resetCallUI();
             }
         });
@@ -297,19 +313,17 @@
         });
     }
 
-    // 🌟 5. 粘り強いマイク権限獲得システム（1回拒否されても何度も再要求）
+    // 🌟 5. 粘り強いマイク権限獲得ループ（1回拒否されても、許可が出るまで追いかける）
     function ensureAudioPermissionAndShowModal() {
         navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream) => {
-            // 許可が取れたら着信画面を表示
             document.getElementById('call-modal').style.display = "block";
+            showAppNotification("📞 着信中", "友達から電話がかかってきています！");
         }).catch(() => {
-            // 拒否された場合、0.5秒後に再度許可ポップアップを仕掛ける
-            console.log("マイク拒否を検知、再要求します。");
+            console.log("マイク拒否検知。0.5秒後に再要求します。");
             setTimeout(() => { ensureAudioPermissionAndShowModal(); }, 500);
         });
     }
 
-    // 📞 電話をかける
     window.toggleVoiceCall = function() {
         if (!currentActiveFriendCode) return;
         const targetConn = activeConnMap[currentActiveFriendCode];
@@ -323,13 +337,12 @@
             return;
         }
 
-        // 発信時もマイクが許可されるまでループで追いかける
         function tryGetMicForCall() {
             navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream) => {
                 localStream = stream;
                 callBtn.innerText = "🛑 切る";
                 callBtn.classList.add('incall');
-                currentCall = peer.call(currentActiveFriendCode, stream);
+                currentCall = peer.call(PEER_PREFIX + currentActiveFriendCode, stream);
                 currentCall.on('stream', (remoteStream) => {
                     document.getElementById('remote-audio').srcObject = remoteStream;
                 });
@@ -373,24 +386,22 @@
         document.getElementById('remote-audio').srcObject = null;
     }
 
-    // 🌟 6. 友達追加アクション
+    // 🌟 6. 3桁友達追加システム
     window.addFriendAction = function() {
         const input = document.getElementById("friend-code-input");
         const code = input.value.trim();
-        if (!code) return alert("コードを入力してください。");
+        if (code.length !== 3 || isNaN(code)) return alert("3桁の数字を正確に入力してください。");
         if (code === myCode) return alert("自分のコードは追加できません！");
-        if (friendsDatabase[code]) return alert("すでに友達に追加されています。");
+        if (friendsDatabase[code]) return alert("すでに登録済みの友達です。");
 
-        // データベースに空の履歴で登録
         friendsDatabase[code] = { code: code, history: [], unread: 0 };
         saveDatabase();
         input.value = "";
         attemptConnectToFriend(code);
         switchMainTab('chats');
-              alert("友達を追加しました！トーク一覧を確認してください。");
+        showAppNotification("友達追加成功", `コード [ ${code} ] をリストに登録しました！`);
     };
 
-    // 🌟 7. UI画面切り替えシステム
     window.switchMainTab = function(tabName) {
         document.getElementById("view-chats").classList.remove("active");
         document.getElementById("view-friends").classList.remove("active");
@@ -409,14 +420,13 @@
         }
     };
 
-    // トーク一覧の描画
     function renderChatsList() {
         const container = document.getElementById("chats-list-container");
         container.innerHTML = "";
         
         const keys = Object.keys(friendsDatabase);
         if (keys.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color:#999; margin-top:40px; font-size:14px;">まだ友達がいません。<br>右上の「友達追加」から登録してね！</p>`;
+            container.innerHTML = `<p style="text-align:center; color:#999; margin-top:30px; font-size:12px;">まだ友達がいません。<br>「友達追加」から3桁コードを入れてね！</p>`;
             return;
         }
 
@@ -424,7 +434,7 @@
             const friend = friendsDatabase[code];
             const isOnline = activeConnMap[code] ? true : false;
             const lastMsgObj = friend.history[friend.history.length - 1];
-            const lastMsgText = lastMsgObj ? lastMsgObj.text : "まだトーク履歴はありません";
+            const lastMsgText = lastMsgObj ? lastMsgObj.text : "トーク履歴はありません";
 
             const item = document.createElement("div");
             item.className = "list-item";
@@ -433,7 +443,7 @@
             item.innerHTML = `
                 <div class="avatar" style="background:${isOnline ? '#25d366' : '#95a5a6'}">👤</div>
                 <div class="item-info">
-                    <div class="item-name">${code} ${isOnline ? '<span style="color:#25d366; font-size:11px;">● オンライン</span>' : '<span style="color:#aaa; font-size:11px;">オフライン</span>'}</div>
+                    <div class="item-name">友達 (ID: ${code}) ${isOnline ? '<span style="color:#25d366; font-size:10px;">● オンライン</span>' : '<span style="color:#aaa; font-size:10px;">オフライン</span>'}</div>
                     <div class="item-lastmsg">${lastMsgText}</div>
                 </div>
                 ${friend.unread > 0 ? `<div class="badge">${friend.unread}</div>` : ''}
@@ -442,14 +452,16 @@
         });
     }
 
-    // 🌟 特定の友達とのチャット画面を全画面で開く
+    // 🌟 7. ◀ 戻るボタンの表示・非表示連動システム
     window.openChatWindow = function(friendCode) {
         currentActiveFriendCode = friendCode;
         document.getElementById("chat-window").style.display = "flex";
-        document.getElementById("back-btn").style.style.display = "block";
+        
+        // ヘッダーをトーク専用表示に切り替え
+        document.getElementById("back-btn").style.display = "block"; // ◀ 戻るを表示
         document.getElementById("header-spacer").style.display = "none";
         document.getElementById("main-tabs").style.display = "none";
-        document.getElementById("main-title").innerText = friendCode;
+        document.getElementById("main-title").innerText = "友達 (ID: " + friendCode + ")";
 
         const isOnline = activeConnMap[friendCode] ? true : false;
         document.getElementById('chat-status-text').innerText = isOnline ? "🟢 通信状態：極めて良好" : "❌ 相手がオフラインです";
@@ -461,7 +473,9 @@
     window.closeChatWindow = function() {
         currentActiveFriendCode = null;
         document.getElementById("chat-window").style.display = "none";
-        document.getElementById("back-btn").style.display = "none";
+        
+        // ヘッダーをメイン一覧用にリセット
+        document.getElementById("back-btn").style.display = "none"; // ◀ 戻るを隠す
         document.getElementById("header-spacer").style.display = "block";
         document.getElementById("main-tabs").style.display = "flex";
         document.getElementById("main-title").innerText = "トーク一覧";
@@ -469,10 +483,7 @@
     };
 
     function clearUnreadAndSync(code) {
-        if(friendsDatabase[code]) {
-            friendsDatabase[code].unread = 0;
-            saveDatabase();
-        }
+        if(friendsDatabase[code]) { friendsDatabase[code].unread = 0; saveDatabase(); }
         sendReadReceipt(code);
     }
 
@@ -580,20 +591,15 @@
     }
 
     function saveDatabase() {
-        localStorage.setItem("friends_db", JSON.stringify(friendsDatabase));
+        localStorage.setItem("friends_db_3digit", JSON.stringify(friendsDatabase));
     }
 
-    // 既読秒数の定期更新
-    setInterval(() => {
-        if (currentActiveFriendCode) { renderMessages(); }
-    }, 2000);
+    setInterval(() => { if (currentActiveFriendCode) { renderMessages(); } }, 2000);
 
-    // 起動処理
     window.addEventListener('DOMContentLoaded', () => {
         initPeerEngine();
         switchMainTab('chats');
     });
 </script>
-
 </body>
 </html>
