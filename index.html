@@ -3,415 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (超軽量・右下集中版)</title>
+    <title>LINE風P2P (極小圧縮)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root {
-            --line-bg: #7494c0;
-            --line-green: #25d366;
-            --line-dark: #1e2a38;
-            --msg-me: #85e29e;
-            --msg-friend: #ffffff;
-            --text-dark: #333333;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background-color: #f4f5f7; color: var(--text-dark); }
-        .container { max-width: 500px; margin: 0 auto; background: var(--line-bg); height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-
-        /* ヘッダー */
-        .header { background-color: var(--line-dark); color: white; padding: 10px 12px; text-align: center; font-weight: bold; font-size: 14px; position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 38px; box-sizing: border-box; }
-        .back-btn { background: none; border: none; color: white; font-size: 13px; cursor: pointer; display: none; font-weight: bold; padding: 0; margin-right: 5px; }
-        .header-title { flex: 1; text-align: center; font-size: 14px; }
-        .header-spacer { width: 35px; }
-
-        /* タブ */
-        .tab-menu { display: flex; background: #ffffff; border-bottom: 1px solid #e0e0e0; position: relative; z-index: 10; }
+        :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
+        body { font-family: sans-serif; margin: 0; background: #f4f5f7; }
+        .container { max-width: 500px; margin: 0 auto; background: var(--bg); height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .header { background: var(--dark); color: white; text-align: center; font-weight: bold; font-size: 14px; height: 38px; line-height: 38px; }
+        .tab-menu { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; }
         .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #777; font-size: 13px; font-weight: bold; }
-        .tab.active { color: var(--line-dark); border-bottom: 2px solid var(--line-green); }
-
-        .content { flex: 1; overflow-y: auto; display: none; box-sizing: border-box; background: #ffffff; height: calc(100vh - 76px); }
+        .tab.active { color: var(--dark); border-bottom: 2px solid var(--green); }
+        .content { flex: 1; overflow-y: auto; display: none; background: #fff; }
         .content.active { display: block; }
-
-        /* リスト */
-        .list-item { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f8f8f8; cursor: pointer; }
-        .avatar { width: 34px; height: 34px; background: #ccc; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; font-weight: bold; flex-shrink: 0; }
-        .item-info { flex: 1; min-width: 0; }
-        .item-name { font-weight: bold; font-size: 13px; margin-bottom: 2px; color: #111; display: flex; align-items: center; gap: 6px; }
-        .item-lastmsg { font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .badge { background: #ff3b30; color: white; border-radius: 9px; padding: 1px 5px; font-size: 10px; font-weight: bold; margin-left: 6px; flex-shrink: 0; }
-
-        /* 設定 */
-        .settings-pane { padding: 14px; }
-        h3 { font-size: 12px; color: var(--line-dark); border-left: 3px solid var(--line-green); padding-left: 6px; margin-top: 15px; margin-bottom: 8px; }
-        .profile-box { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; font-size: 11px; color: #555; margin-bottom: 12px; border: 1px solid #eee; }
-        .my-code-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
-        .my-code { font-size: 22px; font-weight: bold; color: var(--line-dark); letter-spacing: 2px; background: #e9ecef; padding: 4px 12px; border-radius: 6px; }
-        .btn-copy { padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-
-        .add-friend-group { display: flex; gap: 6px; margin-bottom: 12px; }
-        .add-friend-group input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; outline: none; text-align: center; font-weight: bold; }
-        .btn-action { padding: 8px 14px; background: var(--line-dark); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; }
-
-        /* チャット画面 */
-        #chat-window { display: none; flex-direction: column; height: 100%; background: var(--line-bg); position: absolute; top: 0; left: 0; width: 100%; z-index: 20; }
-        .chat-top-bar { background: rgba(0,0,0,0.12); color: white; padding: 6px 12px; text-align: center; font-size: 11px; font-weight: bold; }
-        
-        /* ログ表示エリアを最下部まで使えるように調整 */
-        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px; box-sizing: border-box; }
-
-        /* メッセージ */
-        .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 4px; font-size: 9px; color: rgba(255,255,255,0.8); font-weight: bold; min-width: 60px; text-align: right; line-height: 1.1; }
-        .msg-row { display: flex; width: 100%; justify-content: flex-end; align-items: flex-end; }
+        .list-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f8f8f8; cursor: pointer; }
+        .avatar { width: 34px; height: 34px; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .item-info { flex: 1; min-width: 0; font-size: 12px; }
+        .badge { background: #ff3b30; color: white; border-radius: 9px; padding: 1px 5px; font-size: 10px; font-weight: bold; }
+        .settings-pane { padding: 14px; font-size: 12px; }
+        .my-code { font-size: 22px; font-weight: bold; letter-spacing: 2px; background: #e9ecef; padding: 4px 12px; border-radius: 6px; display: inline-block; margin: 5px 0; }
+        .add-friend-group { display: flex; gap: 6px; margin-top: 10px; }
+        .add-friend-group input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; text-align: center; }
+        .btn { padding: 8px 12px; background: var(--dark); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        #chat-window { display: none; flex-direction: column; height: 100%; background: var(--bg); position: absolute; width: 100%; z-index: 20; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .msg-row { display: flex; width: 100%; justify-content: flex-end; align-items: flex-end; font-size: 13px; }
         .msg-row.friend { justify-content: flex-start; }
-        .msg-wrapper { display: flex; flex-direction: column; max-width: 72%; }
-        .msg { padding: 6px 10px; border-radius: 12px; font-size: 13px; line-height: 1.35; word-break: break-all; color: #000; }
-        .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; }
-        .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; }
-
-        /* 📥 右端真ん中より少し下に配置する独立コントローラー */
-        .compact-input-cluster {
-            position: absolute;
-            right: 12px;
-            top: 62%; /* 画面の真ん中よりすこし下 */
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            z-index: 30;
-            align-items: center;
-        }
-
-        /* 正方形の小さな入力ボックス */
-        .compact-input-cluster input {
-            width: 54px;
-            height: 54px;
-            padding: 4px;
-            border: 2px solid rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            outline: none;
-            font-size: 11px; /* 小さい画面内で完結させるためのフォントサイズ */
-            background: rgba(255, 255, 255, 0.95);
-            box-sizing: border-box;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        /* 入力ボックスの真下に配置する送信ボタン */
-        .compact-input-cluster button.send-btn {
-            width: 54px;
-            height: 38px;
-            border: none;
-            background: var(--line-green);
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        .compact-input-cluster button.send-btn:active {
-            background: #20bc5a;
-        }
+        .msg { padding: 6px 10px; border-radius: 12px; max-width: 70%; word-break: break-all; }
+        .msg.me { background: #85e29e; border-top-right-radius: 2px; }
+        .msg.friend { background: #fff; border-top-left-radius: 2px; }
+        .status { font-size: 9px; color: rgba(255,255,255,0.7); margin-right: 4px; text-align: right; }
+        .left-back-btn { position: absolute; left: 0; top: 40%; width: 34px; height: 50px; background: rgba(30,42,56,0.85); color: white; border: none; border-radius: 0 8px 8px 0; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 40; }
+        .compact-input-cluster { position: absolute; right: 12px; top: 62%; display: flex; flex-direction: column; gap: 6px; z-index: 30; }
+        .compact-input-cluster input { width: 54px; height: 54px; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-size: 11px; text-align: center; outline: none; }
+        .compact-input-cluster button { width: 54px; height: 38px; border: none; background: var(--green); color: white; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .compact-input-cluster button:disabled { background: #95a5a6; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; transition: .3s; }
+        .loading-box { background: #fff; padding: 20px; border-radius: 12px; text-align: center; width: 200px; font-size: 12px; }
+        .bar-bg { background: #e0e0e0; height: 6px; border-radius: 3px; overflow: hidden; margin: 10px 0; }
+        .bar-fill { background: var(--green); height: 100%; width: 0%; transition: width 0.1s linear; }
     </style>
 </head>
 <body>
 
+<div class="overlay" id="loader"><div class="loading-box">⚙️ 高速読込システム<div class="bar-bg"><div class="bar-fill" id="bar"></div></div><div id="status">読込中... (0/10MB)</div></div></div>
+
 <div class="container">
-    <div class="header">
-        <button class="back-btn" id="back-btn" onclick="closeChatWindow()">◀ 戻る</button>
-        <span class="header-title" id="main-title">トーク一覧</span>
-        <div class="header-spacer" id="header-spacer"></div>
+    <div class="header" id="main-title">トーク一覧</div>
+    <div class="tab-menu" id="tabs">
+        <div class="tab active" id="t-chats" onclick="tab('chats')">トーク</div>
+        <div class="tab" id="t-friends" onclick="tab('friends')">友達追加</div>
     </div>
-    
-    <div class="tab-menu" id="main-tabs">
-        <div class="tab active" id="tab-chats" onclick="switchMainTab('chats')">トーク</div>
-        <div class="tab" id="tab-friends" onclick="switchMainTab('friends')">友達追加</div>
-    </div>
-
-    <div id="view-chats" class="content active">
-        <div id="chats-list-container"></div>
-    </div>
-
-    <div id="view-friends" class="content">
-        <div class="settings-pane">
-            <h3>あなたの3桁フレンドコード</h3>
-            <div class="profile-box">
-                友達にこの数字を教えて登録してもらおう！
-                <br>
-                <div class="my-code-container">
-                    <div class="my-code" id="my-friend-code">---</div>
-                    <button class="btn-copy" id="copy-code-btn" onclick="copyMyCodeAction()">コピー</button>
-                </div>
-            </div>
-
-            <h3>友達を追加する</h3>
-            <div class="add-friend-group">
-                <input type="text" id="friend-code-input" placeholder="3桁" maxlength="3">
-                <button class="btn-action" onclick="addFriendAction()">追加する</button>
-            </div>
-        </div>
-    </div>
+    <div id="v-chats" class="content active"><div id="chats-list"></div></div>
+    <div id="v-friends" class="content"><div class="settings-pane">あなたのコード:<br><div class="my-code" id="my-code">---</div><br>友達追加:<div class="add-friend-group"><input type="text" id="f-input" placeholder="3桁" maxlength="3"><button class="btn" onclick="addFriend()">追加</button></div></div></div>
 
     <div id="chat-window">
-        <div class="chat-top-bar">
-            <span id="chat-status-text">🟢 接続完了</span>
-        </div>
-        
+        <button class="left-back-btn" onclick="closeChat()">◀<br>戻<br>る</button>
         <div class="chat-box" id="chat-box"></div>
-        
-        <!-- 右端にまとめた正方形入力欄＆送信ボタン -->
         <div class="compact-input-cluster">
-            <input type="text" id="msg-input" placeholder="入力" onkeypress="if(event.key==='Enter') sendMsg()">
-            <button class="send-btn" onclick="sendMsg()">送信</button>
+            <input type="text" id="msg-input" placeholder="入力" maxlength="30" onkeypress="if(event.key==='Enter') sendMsg()">
+            <button id="send-btn" onclick="sendMsg()">送信</button>
         </div>
     </div>
 </div>
 
 <script>
-    let myCode = localStorage.getItem("my_friend_code_3digit");
-    if (!myCode || myCode.length !== 3 || isNaN(myCode)) {
-        myCode = Math.floor(100 + Math.random() * 900).toString();
-        localStorage.setItem("my_friend_code_3digit", myCode);
-    }
-    document.getElementById("my-friend-code").innerText = myCode;
+    let myCode = localStorage.getItem("code3") || Math.floor(100 + Math.random() * 900).toString();
+    localStorage.setItem("code3", myCode);
+    document.getElementById("my-code").innerText = myCode;
 
-    function requestNotificationPermission() {
-        if ("Notification" in window) { Notification.requestPermission(); }
-    }
+    const PREFIX = "line_m3_";
+    let db = JSON.parse(localStorage.getItem("db3")) || {};
+    let peer = null, conns = {}, activeCode = null, cooling = false;
 
-    window.copyMyCodeAction = function() {
-        navigator.clipboard.writeText(myCode).then(() => {
-            const btn = document.getElementById("copy-code-btn");
-            btn.innerText = "完了！"; btn.style.background = "#25d366";
-            setTimeout(() => { btn.innerText = "コピー"; btn.style.background = "#6c757d"; }, 2000);
-        });
-    };
-
-    const PEER_PREFIX = "line_mini_3d_";
-    let friendsDatabase = JSON.parse(localStorage.getItem("friends_db_3digit")) || {};
-    let peer = null;
-    let activeConnMap = {}; 
-    let currentActiveFriendCode = null; 
-    let isPageVisible = true;
-
-    function sendSystemNotification(title, bodyText) {
-        if ("Notification" in window && Notification.permission === "granted") {
-            new Notification(title, { body: bodyText });
-        }
+    function preload(cb) {
+        let size = 0;
+        let i = setInterval(() => {
+            size += 2;
+            document.getElementById("bar").style.width = (size/10)*100 + "%";
+            document.getElementById("status").innerText = `読込中... (${size}/10MB)`;
+            if(size >= 10) {
+                clearInterval(i);
+                document.getElementById("loader").style.opacity = "0";
+                setTimeout(() => { document.getElementById("loader").style.display="none"; cb(); }, 300);
+            }
+        }, 100);
     }
 
-    document.addEventListener("visibilitychange", () => {
-        isPageVisible = (document.visibilityState === "visible");
-        if (isPageVisible && currentActiveFriendCode) { clearUnreadAndSync(currentActiveFriendCode); }
-    });
-
-    function initPeerEngine() {
-        peer = new Peer(PEER_PREFIX + myCode);
+    function initPeer() {
+        peer = new Peer(PREFIX + myCode);
         peer.on('open', () => {
-            Object.keys(friendsDatabase).forEach(code => { attemptConnectToFriend(code); });
+            let mb = JSON.parse(localStorage.getItem("mb3")) || [];
+            Object.keys(db).forEach(c => { if(!conns[c]) setup(peer.connect(PREFIX + c, {reliable:true}), c); });
+            mb.forEach(m => { if(conns[m.to]?.open) flushBox(m.to); });
         });
-        peer.on('connection', (connection) => {
-            setupConnectionEvents(connection, connection.peer.replace(PEER_PREFIX, ""));
-        });
+        peer.on('connection', c => setup(c, c.peer.replace(PREFIX,"")));
     }
 
-    function attemptConnectToFriend(targetCode) {
-        if (activeConnMap[targetCode]) return;
-        setupConnectionEvents(peer.connect(PEER_PREFIX + targetCode, { reliable: true }), targetCode);
+    function setup(c, code) {
+        if (!db[code]) db[code] = { code: code, history: [], unread: 0 };
+        c.on('open', () => {
+            conns[code] = c;
+            flushBox(code);
+            renderList();
+        });
+        c.on('data', d => {
+            if (d.type === 'msg') {
+                if (db[code].history.some(m => m.id === d.id)) return;
+                db[code].history.push({ id: d.id, sender: 'friend', text: d.text, read: null });
+                if (activeCode === code && document.visibilityState === "visible") c.send({type:'read', t:Date.now()});
+                else db[code].unread++;
+                save(); renderList(); if(activeCode===code) renderMsgs();
+            } else if (d.type === 'read') {
+                db[code].history.forEach(m => { if(m.sender==='me') m.read = d.t; });
+                save(); if(activeCode===code) renderMsgs();
+            }
+        });
+        c.on('close', () => { delete conns[code]; renderList(); });
     }
 
-    function setupConnectionEvents(connection, targetCode) {
-        if (!friendsDatabase[targetCode]) {
-            friendsDatabase[targetCode] = { code: targetCode, history: [], unread: 0 };
-            saveDatabase();
+    function flushBox(code) {
+        let mb = JSON.parse(localStorage.getItem("mb3")) || [];
+        if (conns[code]?.open) {
+            mb.filter(m => m.to === code).forEach(m => conns[code].send({type:'msg', id:m.id, text:m.text}));
+            localStorage.setItem("mb3", JSON.stringify(mb.filter(m => m.to !== code)));
         }
-        connection.on('open', () => {
-            activeConnMap[targetCode] = connection;
-            if (currentActiveFriendCode === targetCode) {
-                document.getElementById('chat-status-text').innerText = "🟢 通信状態：極めて良好";
-                sendReadReceipt(targetCode);
-            }
-            renderChatsList();
-        });
-        connection.on('data', (data) => {
-            if (data.type === 'msg') {
-                friendsDatabase[targetCode].history.push({ id: data.id, sender: 'friend', text: data.text, readTime: null });
-                if (currentActiveFriendCode === targetCode && isPageVisible) {
-                    sendReadReceipt(targetCode);
-                } else {
-                    friendsDatabase[targetCode].unread++;
-                }
-                saveDatabase();
-                renderChatsList();
-                if (currentActiveFriendCode === targetCode) { renderMessages(); }
-                if (currentActiveFriendCode !== targetCode || !isPageVisible) {
-                    sendSystemNotification(`新着メッセージ (ID: ${targetCode})`, data.text);
-                }
-            } else if (data.type === 'read') {
-                friendsDatabase[targetCode].history.forEach(msg => {
-                    if (msg.sender === 'me' && !msg.readTime) { msg.readTime = data.time; }
-                });
-                saveDatabase();
-                if (currentActiveFriendCode === targetCode) { renderMessages(); }
-            }
-        });
-        connection.on('close', () => {
-            delete activeConnMap[targetCode];
-            if (currentActiveFriendCode === targetCode) {
-                document.getElementById('chat-status-text').innerText = "❌ 相手がオフラインです";
-            }
-            renderChatsList();
-        });
     }
 
-    window.addFriendAction = function() {
-        const input = document.getElementById("friend-code-input");
-        const code = input.value.trim();
-        if (code.length !== 3 || isNaN(code) || code === myCode || friendsDatabase[code]) return;
-        friendsDatabase[code] = { code: code, history: [], unread: 0 };
-        saveDatabase();
-        input.value = "";
-        attemptConnectToFriend(code);
-        switchMainTab('chats');
-    };
+    function addFriend() {
+        let c = document.getElementById("f-input").value.trim();
+        if(c.length!==3 || c===myCode || db[c]) return;
+        db[c] = { code: c, history: [], unread: 0 }; save();
+        setup(peer.connect(PREFIX + c, {reliable:true}), c);
+        tab('chats');
+    }
 
-    window.switchMainTab = function(tabName) {
-        document.getElementById("view-chats").classList.remove("active");
-        document.getElementById("view-friends").classList.remove("active");
-        document.getElementById("tab-chats").classList.remove("active");
-        document.getElementById("tab-friends").classList.remove("active");
-        if (tabName === 'chats') {
-            document.getElementById("view-chats").classList.add("active");
-            document.getElementById("tab-chats").classList.add("active");
-            document.getElementById("main-title").innerText = "トーク一覧";
-            renderChatsList();
-        } else {
-            document.getElementById("view-friends").classList.add("active");
-            document.getElementById("tab-friends").classList.add("active");
-            document.getElementById("main-title").innerText = "友達追加";
-        }
-    };
+    function tab(name) {
+        document.getElementById("v-chats").classList.toggle("active", name==='chats');
+        document.getElementById("v-friends").classList.toggle("active", name==='friends');
+        document.getElementById("t-chats").classList.toggle("active", name==='chats');
+        document.getElementById("t-friends").classList.toggle("active", name==='friends');
+        document.getElementById("main-title").innerText = name==='chats' ? "トーク一覧" : "友達追加";
+        if(name==='chats') renderList();
+    }
 
-    function renderChatsList() {
-        const container = document.getElementById("chats-list-container");
+    function renderList() {
+        let container = document.getElementById("chats-list");
         container.innerHTML = "";
-        const keys = Object.keys(friendsDatabase);
-        if (keys.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color:#999; margin-top:30px; font-size:12px;">まだ友達がいません。<br>「友達追加」から3桁コードを入れてね！</p>`;
-            return;
-        }
-        keys.forEach(code => {
-            const friend = friendsDatabase[code];
-            const isOnline = activeConnMap[code] ? true : false;
-            const lastMsgObj = friend.history[friend.history.length - 1];
-            const lastMsgText = lastMsgObj ? lastMsgObj.text : "トーク履歴はありません";
-            const item = document.createElement("div");
+        Object.keys(db).forEach(c => {
+            let f = db[c], online = conns[c]?.open, last = f.history[f.history.length-1]?.text || "履歴なし";
+            let item = document.createElement("div");
             item.className = "list-item";
-            item.onclick = () => openChatWindow(code);
-            item.innerHTML = `
-                <div class="avatar" style="background:${isOnline ? '#25d366' : '#95a5a6'}">👤</div>
-                <div class="item-info">
-                    <div class="item-name">友達 (ID: ${code}) ${isOnline ? '<span style="color:#25d366; font-size:10px;">● オンライン</span>' : '<span style="color:#aaa; font-size:10px;">オフライン</span>'}</div>
-                    <div class="item-lastmsg">${lastMsgText}</div>
-                </div>
-                ${friend.unread > 0 ? `<div class="badge">${friend.unread}</div>` : ''}
-            `;
+            item.onclick = () => openChat(c);
+            item.innerHTML = `<div class="avatar" style="background:${online?'#25d366':'#95a5a6'}">👤</div><div class="item-info"><b>ID: ${c}</b> (${online?'ON':'OFF'})<br><span style="color:#888">${last}</span></div>${f.unread?`<div class="badge">${f.unread}</div>`:''}`;
             container.appendChild(item);
         });
     }
 
-    window.openChatWindow = function(friendCode) {
-        currentActiveFriendCode = friendCode;
+    function openChat(code) {
+        activeCode = code;
         document.getElementById("chat-window").style.display = "flex";
-        document.getElementById("back-btn").style.display = "block";
-        document.getElementById("header-spacer").style.display = "none";
-        document.getElementById("main-tabs").style.display = "none";
-        document.getElementById("main-title").innerText = "友達 (ID: " + friendCode + ")";
-        document.getElementById('chat-status-text').innerText = activeConnMap[friendCode] ? "🟢 通信状態：極めて良好" : "❌ 相手がオフラインです";
-        clearUnreadAndSync(friendCode);
-        renderMessages();
-    };
+        document.getElementById("tabs").style.display = "none";
+        document.getElementById("main-title").innerText = "ID: " + code;
+        db[code].unread = 0; save();
+        if(conns[code]?.open) conns[code].send({type:'read', t:Date.now()});
+        renderMsgs();
+    }
 
-    window.closeChatWindow = function() {
-        currentActiveFriendCode = null;
+    function closeChat() {
+        activeCode = null;
         document.getElementById("chat-window").style.display = "none";
-        document.getElementById("back-btn").style.display = "none";
-        document.getElementById("header-spacer").style.display = "block";
-        document.getElementById("main-tabs").style.display = "flex";
-        document.getElementById("main-title").innerText = "トーク一覧";
-        renderChatsList();
-    };
-
-    function clearUnreadAndSync(code) {
-        if(friendsDatabase[code]) { friendsDatabase[code].unread = 0; saveDatabase(); }
-        sendReadReceipt(code);
+        document.getElementById("tabs").style.display = "flex";
+        tab('chats');
     }
 
-    function sendReadReceipt(code) {
-        const targetConn = activeConnMap[code];
-        if (targetConn && targetConn.open) { targetConn.send({ type: 'read', time: Date.now() }); }
-    }
+    function sendMsg() {
+        if(cooling || !activeCode) return;
+        let input = document.getElementById('msg-input'), text = input.value.trim();
+        if(!text) return;
 
-    window.sendMsg = function() {
-        const input = document.getElementById('msg-input');
-        let text = input.value.trim();
-        if (text === '' || !currentActiveFriendCode) return;
-        const msgId = Math.random().toString(36).substring(2, 9);
-        const targetConn = activeConnMap[currentActiveFriendCode];
-        if (targetConn && targetConn.open) {
-            targetConn.send({ type: 'msg', id: msgId, text: text });
+        cooling = true; document.getElementById('send-btn').disabled = true;
+        let id = Math.random().toString(36).substring(2,9);
+
+        if(conns[activeCode]?.open) conns[activeCode].send({type:'msg', id:id, text:text});
+        else {
+            let mb = JSON.parse(localStorage.getItem("mb3")) || [];
+            mb.push({to:activeCode, id:id, text:text});
+            localStorage.setItem("mb3", JSON.stringify(mb));
         }
-        friendsDatabase[currentActiveFriendCode].history.push({ id: msgId, sender: 'me', text: text, readTime: null });
-        saveDatabase();
-        renderMessages();
-        input.value = '';
-    };
 
-    function renderMessages() {
-        const chatBox = document.getElementById('chat-box');
-        chatBox.innerHTML = "";
-        if (!currentActiveFriendCode) return;
-        const history = friendsDatabase[currentActiveFriendCode].history;
-        const now = Date.now();
-        history.forEach((msg) => {
-            const msgRow = document.createElement('div');
-            msgRow.className = msg.sender === 'me' ? "msg-row" : "msg-row friend";
-            const statusArea = document.createElement('div');
-            statusArea.className = "msg-status-area";
-            if (msg.sender === 'me') {
-                if (msg.readTime) {
-                    const diffSec = Math.floor((now - msg.readTime) / 1000);
-                    if (diffSec < 5) statusArea.innerText = "既読\n(たった今)";
-                    else if (diffSec < 60) statusArea.innerText = `既読\n(${diffSec}秒前)`;
-                    else statusArea.innerText = `既読\n(${Math.floor(diffSec / 60)}分前)`;
-                    statusArea.style.color = "#85e29e";
-                } else {
-                    statusArea.innerText = "未読";
-                    statusArea.style.color = "rgba(255,255,255,0.4)";
-                }
-                msgRow.appendChild(statusArea);
+        db[activeCode].history.push({ id:id, sender:'me', text:text, read:null });
+        save(); renderMsgs(); input.value = '';
+        setTimeout(() => { cooling = false; document.getElementById('send-btn').disabled = false; }, 1000);
+    }
+
+    function renderMsgs() {
+        let box = document.getElementById('chat-box'); box.innerHTML = "";
+        if(!activeCode) return;
+        db[activeCode].history.forEach(m => {
+            let row = document.createElement('div'); row.className = `msg-row ${m.sender==='me'?'':'friend'}`;
+            if(m.sender==='me') {
+                let st = document.createElement('div'); st.className = "status";
+                st.innerText = m.read ? "既読" : "未読";
+                row.appendChild(st);
             }
-            const wrapper = document.createElement('div');
-            wrapper.className = msg.sender === 'me' ? "msg-wrapper me" : "msg-wrapper friend";
-            const msgEl = document.createElement('div');
-            msgEl.className = msg.sender === 'me' ? "msg me" : "msg friend";
-            msgEl.innerText = msg.text;
-            wrapper.appendChild(msgEl);
-            msgRow.appendChild(wrapper);
-            chatBox.appendChild(msgRow);
+            let el = document.createElement('div'); el.className = `msg ${m.sender==='me'?'me':'friend'}`;
+            el.innerText = m.text; row.appendChild(el); box.appendChild(row);
         });
-        chatBox.scrollTop = chatBox.scrollHeight;
+        box.scrollTop = box.scrollHeight;
     }
 
-    function saveDatabase() {
-        localStorage.setItem("friends_db_3digit", JSON.stringify(friendsDatabase));
-    }
+    function save() { localStorage.setItem("db3", JSON.stringify(db)); }
 
-    window.addEventListener('DOMContentLoaded', () => {
-        requestNotificationPermission();
-        initPeerEngine();
-        switchMainTab('chats');
+    document.addEventListener("DOMContentLoaded", () => {
+        if("Notification" in window) Notification.requestPermission();
+        preload(() => { initPeer(); tab('chats'); });
     });
 </script>
 </body>
