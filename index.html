@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極小スマホ最適化 LINE風P2P (数字3桁＆最強通知版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極小スマホ最適化 LINE風P2P (下部隠れ防止版)</title>
     <style>
         :root {
             --line-bg: #7494c0;
@@ -16,9 +16,9 @@
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background-color: #f4f5f7; color: var(--text-dark); }
         
         /* 📱 全体をコンパクトに収めるコンテナ */
-        .container { max-width: 500px; margin: 0 auto; background: var(--line-bg); height: 100vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.2); overflow: hidden; }
+        .container { max-width: 500px; margin: 0 auto; background: var(--line-bg); height: 100vh; height: -webkit-fill-available; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.2); overflow: hidden; }
         
-        /* 🔔 超強力：LINE風アプリ内ポップアップ通知バー */
+        /* 🔔 LINE風アプリ内ポップアップ通知バー */
         .push-banner { position: absolute; top: -60px; left: 8px; right: 8px; background: rgba(26, 38, 54, 0.96); color: white; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
         .push-banner.show { top: 8px; }
         .push-avatar { width: 28px; height: 28px; background: var(--line-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
@@ -26,22 +26,22 @@
         .push-title { font-size: 11px; font-weight: bold; color: var(--line-green); margin-bottom: 1px; }
         .push-text { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.95; }
 
-        /* ◀ 戻るボタン付きヘッダー（サイズダウン） */
+        /* ◀ 戻るボタン付きヘッダー */
         .header { background-color: var(--line-dark); color: white; padding: 10px 12px; text-align: center; font-weight: bold; font-size: 14px; position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 38px; box-sizing: border-box; }
         .back-btn { background: none; border: none; color: white; font-size: 13px; cursor: pointer; display: none; font-weight: bold; padding: 0; margin-right: 5px; }
         .header-title { flex: 1; text-align: center; font-size: 14px; }
         .header-spacer { width: 35px; }
 
-        /* タブメニュー（サイズダウン） */
+        /* タブメニュー */
         .tab-menu { display: flex; background: #ffffff; border-bottom: 1px solid #e0e0e0; position: relative; z-index: 10; }
         .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #777; font-size: 13px; font-weight: bold; transition: all 0.2s; }
         .tab.active { color: var(--line-dark); border-bottom: 2px solid var(--line-green); }
         
         /* コンテンツ表示エリア */
-        .content { flex: 1; overflow-y: auto; display: none; box-sizing: border-box; background: #ffffff; height: calc(100vh - 76px); }
-        .content.active { display: block; }
+        .content { flex: 1; overflow-y: auto; box-sizing: border-box; background: #ffffff; }
+        .content:not(.active) { display: none; }
         
-        /* 友達・トーク一覧リスト（4まわりコンパクト化） */
+        /* 友達・トーク一覧リスト */
         .list-item { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f8f8f8; cursor: pointer; }
         .list-item:active { background: #f5f5f5; }
         .avatar { width: 34px; height: 34px; background: #ccc; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; font-weight: bold; flex-shrink: 0; }
@@ -50,7 +50,7 @@
         .item-lastmsg { font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .badge { background: #ff3b30; color: white; border-radius: 9px; padding: 1px 5px; font-size: 10px; font-weight: bold; margin-left: 6px; flex-shrink: 0; }
 
-        /* 設定画面（サイズダウン） */
+        /* 設定画面 */
         .settings-pane { padding: 14px; }
         h3 { font-size: 12px; color: var(--line-dark); border-left: 3px solid var(--line-green); padding-left: 6px; margin-top: 15px; margin-bottom: 8px; }
         .profile-box { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; font-size: 11px; color: #555; margin-bottom: 12px; border: 1px solid #eee; }
@@ -60,16 +60,18 @@
         .add-friend-group input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; outline: none; text-align: center; font-weight: bold; }
         .btn-action { padding: 8px 14px; background: var(--line-dark); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; }
         
-        /* 🌟 チャット専用画面（背景ブルー） */
+        /* 🌟 チャット専用画面（flexレイアウトに完全変更して絶対隠さない構造に） */
         #chat-window { display: none; flex-direction: column; height: 100%; background: var(--line-bg); position: absolute; top: 0; left: 0; width: 100%; z-index: 20; }
-        .chat-top-bar { background: rgba(0,0,0,0.12); color: white; padding: 5px 12px; text-align: center; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .chat-top-bar { background: rgba(0,0,0,0.12); color: white; padding: 5px 12px; text-align: center; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .btn-call { background: #007bff; color: white; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-call.incall { background: #ff3b30; }
         
-        .typing-indicator { background: rgba(255, 255, 255, 0.95); color: var(--line-dark); text-align: center; padding: 4px; font-size: 11px; font-weight: bold; display: none; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 85px; box-sizing: border-box; }
+        .typing-indicator { background: rgba(255, 255, 255, 0.95); color: var(--line-dark); text-align: center; padding: 4px; font-size: 11px; font-weight: bold; display: none; flex-shrink: 0; }
         
-        /* メッセージ（4まわりコンパクト化） */
+        /* 💬 メッセージ表示域：下部の固定パーツを避けて自動伸縮する仕組みに変えました */
+        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+        
+        /* メッセージレイアウト */
         .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 4px; font-size: 9px; color: rgba(255,255,255,0.8); font-weight: bold; min-width: 60px; text-align: right; line-height: 1.1; }
         .msg-row { display: flex; width: 100%; justify-content: flex-end; align-items: flex-end; }
         .msg-row.friend { justify-content: flex-start; }
@@ -83,15 +85,18 @@
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; color: #000; }
         .msg.big-emoji { background: none !important; box-shadow: none !important; font-size: 30px; padding: 2px 0; }
         
-        /* 特小絵文字スタンプパレット */
-        .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 4px; border-top: 1px solid #ddd; position: absolute; bottom: 38px; width: 100%; box-sizing: border-box; z-index: 25; }
+        /* 🛠️ 下部操作パネル：画面外にハミ出さないようにコンテナ化 */
+        .chat-bottom-controls { background: #f6f6f6; border-top: 1px solid #ddd; display: flex; flex-direction: column; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+
+        /* 特小絵文字スタンプパレット（位置を上に固定化） */
+        .emoji-palette { display: flex; justify-content: space-around; background: #eee; padding: 6px 4px; border-bottom: 1px solid #ddd; box-sizing: border-box; }
         .emoji-stamp { font-size: 18px; cursor: pointer; user-select: none; }
         .emoji-stamp:active { transform: scale(1.3); }
 
-        /* 特小入力エリア（高さ38pxに圧縮） */
-        .input-area { display: flex; padding: 5px 8px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 26; align-items: center; gap: 5px; height: 38px; }
-        .input-area input { flex: 1; padding: 5px 12px; border: 1px solid #ddd; border-radius: 15px; outline: none; font-size: 13px; background: white; height: 26px; box-sizing: border-box; }
-        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 0 12px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 12px; height: 26px; display: flex; align-items: center; justify-content: center; }
+        /* 特小入力エリア（高さ38px固定、下にはみ出さない） */
+        .input-area { display: flex; padding: 6px 8px; align-items: center; gap: 5px; height: 40px; box-sizing: border-box; }
+        .input-area input { flex: 1; padding: 5px 12px; border: 1px solid #ddd; border-radius: 15px; outline: none; font-size: 13px; background: white; height: 28px; box-sizing: border-box; }
+        .input-area button.send-btn { border: none; background: var(--line-green); color: white; padding: 0 12px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 12px; height: 28px; display: flex; align-items: center; justify-content: center; }
         
         /* 着信ポップアップ */
         .call-modal { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -25%); background: white; border-radius: 12px; padding: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); text-align: center; z-index: 100; display: none; width: 200px; }
@@ -153,6 +158,7 @@
             <button id="call-toggle-btn" class="btn-call" onclick="toggleVoiceCall()">📞 通話</button>
         </div>
         <div class="typing-indicator" id="typing-indicator">💬 相手が入力中...</div>
+        
         <div class="chat-box" id="chat-box"></div>
 
         <div class="call-modal" id="call-modal">
@@ -163,20 +169,22 @@
             </div>
         </div>
 
-        <div class="emoji-palette">
-            <span class="emoji-stamp" onclick="sendEmojiStamp('👍')">👍</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('🙌')">🙌</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('🤣')">🤣</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('🥺')">🥺</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('🔥')">🔥</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('✨')">✨</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('❤️')">❤️</span>
-            <span class="emoji-stamp" onclick="sendEmojiStamp('🎉')">🎉</span>
-        </div>
-        
-        <div class="input-area">
-            <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()" oninput="handleTyping()">
-            <button class="send-btn" onclick="sendMsg()">送信</button>
+        <div class="chat-bottom-controls">
+            <div class="emoji-palette">
+                <span class="emoji-stamp" onclick="sendEmojiStamp('👍')">👍</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('🙌')">🙌</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('🤣')">🤣</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('🥺')">🥺</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('🔥')">🔥</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('✨')">✨</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('❤️')">❤️</span>
+                <span class="emoji-stamp" onclick="sendEmojiStamp('🎉')">🎉</span>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()" oninput="handleTyping()">
+                <button class="send-btn" onclick="sendMsg()">送信</button>
+            </div>
         </div>
     </div>
 </div>
@@ -313,13 +321,12 @@
         });
     }
 
-    // 🌟 5. 粘り強いマイク権限獲得ループ（1回拒否されても、許可が出るまで追いかける）
+    // 🌟 5. 粘り強いマイク権限獲得ループ
     function ensureAudioPermissionAndShowModal() {
         navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream) => {
             document.getElementById('call-modal').style.display = "block";
             showAppNotification("📞 着信中", "友達から電話がかかってきています！");
         }).catch(() => {
-            console.log("マイク拒否検知。0.5秒後に再要求します。");
             setTimeout(() => { ensureAudioPermissionAndShowModal(); }, 500);
         });
     }
@@ -452,13 +459,11 @@
         });
     }
 
-    // 🌟 7. ◀ 戻るボタンの表示・非表示連動システム
     window.openChatWindow = function(friendCode) {
         currentActiveFriendCode = friendCode;
         document.getElementById("chat-window").style.display = "flex";
         
-        // ヘッダーをトーク専用表示に切り替え
-        document.getElementById("back-btn").style.display = "block"; // ◀ 戻るを表示
+        document.getElementById("back-btn").style.display = "block";
         document.getElementById("header-spacer").style.display = "none";
         document.getElementById("main-tabs").style.display = "none";
         document.getElementById("main-title").innerText = "友達 (ID: " + friendCode + ")";
@@ -474,8 +479,7 @@
         currentActiveFriendCode = null;
         document.getElementById("chat-window").style.display = "none";
         
-        // ヘッダーをメイン一覧用にリセット
-        document.getElementById("back-btn").style.display = "none"; // ◀ 戻るを隠す
+        document.getElementById("back-btn").style.display = "none";
         document.getElementById("header-spacer").style.display = "block";
         document.getElementById("main-tabs").style.display = "flex";
         document.getElementById("main-title").innerText = "トーク一覧";
