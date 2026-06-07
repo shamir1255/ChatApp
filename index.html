@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-width=1.0, user-scalable=no">
-    <title>LINE風P2P (高画質ZIP圧縮版)</title>
+    <title>LINE風P2P (不正追加ガード版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
@@ -16,7 +16,6 @@
         .content { flex: 1; overflow-y: auto; display: none; background: #fff; }
         .content.active { display: block; }
         
-        /* ❶ 通知バッジ付きのリストデザイン */
         .list-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f8f8f8; cursor: pointer; position: relative; }
         .avatar-container { position: relative; width: 34px; height: 34px; margin-right: 10px; }
         .avatar { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; background: #95a5a6; font-size: 12px; }
@@ -94,7 +93,6 @@
     let db = JSON.parse(localStorage.getItem("db3")) || {};
     let peer = null, conns = {}, activeCode = null, cooling = false, timerInterval = null;
 
-    // ⚡ 【超強力】ZIP圧縮・解凍アルゴリズム (Gzipベース)
     async function compressStr(str) {
         const buf = new TextEncoder().encode(str);
         const cs = new CompressionStream('deflate');
@@ -113,7 +111,7 @@
             writer.write(buf); writer.close();
             const res = await new Response(ds.readable).arrayBuffer();
             return new TextDecoder().decode(res);
-        } catch(e) { return b64; } // 圧縮されてない旧データはそのまま返す
+        } catch(e) { return b64; }
     }
 
     function preload(cb) {
@@ -140,30 +138,33 @@
         peer.on('connection', c => setup(c, c.peer.replace(PREFIX,"")));
     }
 
+    // ⚡ 【最重要】setup関数を改良：接続が成功した段階で初めてDB(データベース)に保存する仕様へ変更
     function setup(c, code) {
-        if (!db[code]) db[code] = { code: code, name: "友達(" + code + ")", history: [], unread: 0 };
         c.on('open', () => {
             conns[code] = c;
+            
+            // 💡 実際に通信経路が確立した（コードが合っていてオンラインである）ここでのみ、初めてトーク一覧に追加！
+            if (!db[code]) {
+                db[code] = { code: code, name: "友達(" + code + ")", history: [], unread: 0 };
+                save();
+            }
+            
             c.send({ type: 'sync-name', name: myName });
             flushBox(code); renderList();
         });
         c.on('data', async d => {
             if (d.type === 'sync-name') {
-                db[code].name = d.name; save(); renderList();
+                if(db[code]) { db[code].name = d.name; save(); renderList(); }
                 if(activeCode === code) document.getElementById("main-title").innerText = d.name;
             } else if (d.type === 'msg') {
-                if (db[code].history.some(m => m.id === d.id)) return;
-                
-                // ⚡ 受信したデータをその場で解凍！
+                if (!db[code] || db[code].history.some(m => m.id === d.id)) return;
                 let rawText = d.zip ? await decompressStr(d.text) : d.text;
-                
                 db[code].history.push({ id: d.id, sender: 'friend', text: rawText, isImg: d.isImg, read: null });
                 if (activeCode === code && document.visibilityState === "visible") c.send({type:'read', t:Date.now()});
                 else db[code].unread++;
-                
                 save(); renderList(); if(activeCode===code) renderMsgs();
             } else if (d.type === 'read') {
-                db[code].history.forEach(m => { if(m.sender==='me' && !m.read) m.read = d.t; });
+                if(db[code]) db[code].history.forEach(m => { if(m.sender==='me' && !m.read) m.read = d.t; });
                 save(); if(activeCode===code) renderMsgs();
             }
         });
@@ -187,11 +188,21 @@
         }
     }
 
+    // ⚡ 【大改修】追加ボタンを押した時はDBに保存せず、裏で接続を試みるだけにする（フェイクコード排除）
     function addFriend() {
         let c = document.getElementById("f-input").value.trim();
-        if(c.length!==3 || c===myCode || db[c]) return;
-        db[c] = { code: c, name: "友達(" + c + ")", history: [], unread: 0 }; save();
-        setup(peer.connect(PREFIX + c, {reliable:true}), c); tab('chats');
+        // 自コード、桁数違い、または既に登録済みの場合は何もしない
+        if(c.length !== 3 || c === myCode || db[c]) {
+            document.getElementById("f-input").value = '';
+            return;
+        }
+        
+        // 💡 ここではまだ db[c] に保存しない！
+        // 裏で接続をリクエストし、setup関数の中で「open（成功）」が発火したらリストに追加される
+        setup(peer.connect(PREFIX + c, {reliable:true}), c); 
+        
+        document.getElementById("f-input").value = '';
+        tab('chats'); // トークタブに戻って待機（繋がると自動でリストに湧き出ます）
     }
 
     function tab(name) {
@@ -203,14 +214,11 @@
         if(name==='chats') renderList();
     }
 
-    // ⚡ 【デザイン改修】「❶」バッジをアイコン右上に綺麗にマッピング
     function renderList() {
         let container = document.getElementById("chats-list"); container.innerHTML = "";
         Object.keys(db).forEach(c => {
             let f = db[c], online = conns[c]?.open, last = f.history[f.history.length-1];
             let txt = last ? (last.isImg ? "[写真]" : last.text) : "履歴なし";
-            
-            // 数字を「❶」「❷」等のバッジ風スタイルに変換
             let badgeHtml = f.unread ? `<div class="badge">${f.unread}</div>` : '';
             
             let item = document.createElement("div"); item.className = "list-item";
@@ -229,6 +237,7 @@
     }
 
     function openChat(code) {
+        if(!db[code]) return;
         activeCode = code;
         document.getElementById("chat-window").style.display = "flex";
         document.getElementById("tabs").style.display = "none";
@@ -256,7 +265,6 @@
         input.value = '';
     }
 
-    // 📷 写真送信（ZIP圧縮エンジンを搭載し画質をアップ！）
     function sendImage(input) {
         if (!input.files || !input.files[0] || !activeCode) return;
         let reader = new FileReader();
@@ -265,15 +273,13 @@
             img.src = e.target.result;
             img.onload = function () {
                 let canvas = document.createElement('canvas');
-                let max = 600; // ⚡ ZIP圧縮により限界突破！600pxの高精細画像に対応！
+                let max = 600;
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > max) { h *= max / w; w = max; } }
                 else { if (h > max) { w *= max / h; h = max; } }
                 canvas.width = w; canvas.height = h;
                 let ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                
-                // 画質をたっぷり75%まで引き上げ（ZIPで小さくするので千切れません）
                 let highQualityDataUrl = canvas.toDataURL('image/jpeg', 0.75); 
                 executeSend(highQualityDataUrl, true);
             };
@@ -283,14 +289,13 @@
     }
 
     async function executeSend(payload, isImg) {
+        if(!activeCode || !db[activeCode]) return;
         cooling = true; document.getElementById('send-btn').disabled = true;
         let id = Math.random().toString(36).substring(2,9);
         
-        // ローカル（自分用）には生データを保存
         db[activeCode].history.push({ id: id, sender: 'me', text: payload, isImg: isImg, read: null });
         save(); renderMsgs();
 
-        // ⚡ 通信相手に送るときだけZIPに圧縮！
         let zipPayload = await compressStr(payload);
 
         if(conns[activeCode]?.open) {
@@ -305,7 +310,7 @@
 
     function renderMsgs() {
         let box = document.getElementById('chat-box'); 
-        if(!activeCode) return;
+        if(!activeCode || !db[activeCode]) return;
         let isAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 30;
         box.innerHTML = "";
         let now = Date.now();
