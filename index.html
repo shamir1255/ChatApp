@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (超軽量・最適化版)</title>
+    <title>LINE風P2P (超軽量・右下集中版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -54,7 +54,9 @@
         /* チャット画面 */
         #chat-window { display: none; flex-direction: column; height: 100%; background: var(--line-bg); position: absolute; top: 0; left: 0; width: 100%; z-index: 20; }
         .chat-top-bar { background: rgba(0,0,0,0.12); color: white; padding: 6px 12px; text-align: center; font-size: 11px; font-weight: bold; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 70px; box-sizing: border-box; }
+        
+        /* ログ表示エリアを最下部まで使えるように調整 */
+        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px; box-sizing: border-box; }
 
         /* メッセージ */
         .msg-status-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-right: 4px; font-size: 9px; color: rgba(255,255,255,0.8); font-weight: bold; min-width: 60px; text-align: right; line-height: 1.1; }
@@ -65,12 +67,52 @@
         .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; }
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; }
 
-        /* 📥 入力エリア＆送信ボタン（位置を右端下よりちょっと上に最適化） */
-        .input-area { display: flex; padding: 8px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 26; align-items: center; height: 50px; }
-        .input-area input { flex: 1; padding: 5px 12px; border: 1px solid #ddd; border-radius: 17px; outline: none; font-size: 16px; background: white; height: 34px; box-sizing: border-box; padding-right: 70px; }
-        
-        /* 送信ボタンの位置を上に引き上げ */
-        .input-area button.send-btn { position: absolute; right: 12px; bottom: 14px; border: none; background: var(--line-green); color: white; padding: 0 16px; border-radius: 17px; cursor: pointer; font-weight: bold; font-size: 13px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+        /* 📥 右端真ん中より少し下に配置する独立コントローラー */
+        .compact-input-cluster {
+            position: absolute;
+            right: 12px;
+            top: 62%; /* 画面の真ん中よりすこし下 */
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 30;
+            align-items: center;
+        }
+
+        /* 正方形の小さな入力ボックス */
+        .compact-input-cluster input {
+            width: 54px;
+            height: 54px;
+            padding: 4px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            outline: none;
+            font-size: 11px; /* 小さい画面内で完結させるためのフォントサイズ */
+            background: rgba(255, 255, 255, 0.95);
+            box-sizing: border-box;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* 入力ボックスの真下に配置する送信ボタン */
+        .compact-input-cluster button.send-btn {
+            width: 54px;
+            height: 38px;
+            border: none;
+            background: var(--line-green);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .compact-input-cluster button.send-btn:active {
+            background: #20bc5a;
+        }
     </style>
 </head>
 <body>
@@ -115,10 +157,12 @@
         <div class="chat-top-bar">
             <span id="chat-status-text">🟢 接続完了</span>
         </div>
+        
         <div class="chat-box" id="chat-box"></div>
         
-        <div class="input-area">
-            <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()">
+        <!-- 右端にまとめた正方形入力欄＆送信ボタン -->
+        <div class="compact-input-cluster">
+            <input type="text" id="msg-input" placeholder="入力" onkeypress="if(event.key==='Enter') sendMsg()">
             <button class="send-btn" onclick="sendMsg()">送信</button>
         </div>
     </div>
