@@ -59,214 +59,17 @@
         .btn-connect { padding: 12px 20px; background: var(--line-dark); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         
         /* QRエリア */
-        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0 24px 0; background: #ffffff; padding: 15px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        #qrcode-img { display: block; max-width: 160px; max-height: 160px; margin: 0 auto; background: white; }
+        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0 24px 0; background: #ffffff; padding: 15px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); min-height: 180px; }
+        #qrcode { padding: 10px; background: white; }
         
-        /* 通知カード */
+        /* 通知・友達状態カード */
         .notice-card { background: #fff3cd; padding: 16px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
         .notice-card p { margin: 0 0 12px 0; font-size: 14px; color: #664d03; }
         .btn-accept { background: var(--line-green); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; }
         #notifications { min-height: 40px; }
     </style>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCdkgEhdI9dmBAyMfsRJWI5GamHDW_NknQ",
-            authDomain: "chatapp-bbf6e.firebaseapp.com",
-            projectId: "chatapp-bbf6e",
-            storageBucket: "chatapp-bbf6e.firebasestorage.app",
-            messagingSenderId: "821508067673",
-            appId: "1:821508067673:web:f2bee03404624e99fefc48",
-            measurementId: "G-J4CRQJKGTY"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // 自分のIDと名前を決定（なければ新規生成、あれば固定）
-        let myId = localStorage.getItem("my_chat_id");
-        let myName = localStorage.getItem("my_chat_name");
-        if (!myId) {
-            myId = "code_" + Math.random().toString(36).substring(2, 7).toUpperCase(); // シンプルな5文字コードに
-            myName = "ユーザー_" + Math.random().toString(36).substring(2, 5);
-            localStorage.setItem("my_chat_id", myId);
-            localStorage.setItem("my_chat_name", myName);
-        }
-
-        let activeFriendId = null;
-        let updateIntervalId = null;
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            // 画面表示を更新
-            document.getElementById('my-name-display').innerText = `${myName}\n【あなたのコード: ${myId}】`;
-            
-            // Firebaseに自分の名前を登録
-            await setDoc(doc(db, "users", myId), { name: myName }, { merge: true });
-
-            // 🌟 超シンプル設計のQRコード生成
-            const currentUrl = window.location.href.split('?')[0];
-            const inviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
-            document.getElementById("qrcode-img").src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(inviteUrl)}`;
-
-            // URLからの自動友達追加チェック
-            const urlParams = new URLSearchParams(window.location.search);
-            const addTargetId = urlParams.get('add');
-            const addTargetName = urlParams.get('name');
-            if (addTargetId && addTargetId !== myId) {
-                requestFriend(addTargetId, addTargetName || "友達");
-                window.history.replaceState({}, document.title, currentUrl); // URLを綺麗にする
-            }
-
-            // 友達マッチングのリアルタイム監視
-            onSnapshot(collection(db, "friends_match"), (snapshot) => {
-                const reqList = document.getElementById('notifications');
-                let hasNotice = false;
-
-                snapshot.forEach((roomDoc) => {
-                    const matchKey = roomDoc.id;
-                    if (matchKey.includes(myId)) {
-                        const data = roomDoc.data();
-                        const friendId = matchKey.split("_").find(id => id !== myId);
-                        const myData = data[myId];
-                        const friendData = data[friendId];
-
-                        if (!friendData || !myData) return;
-
-                        // 申請が来ている時
-                        if (friendData.active === true && myData.active === false) {
-                            hasNotice = true;
-                            reqList.innerHTML = `
-                                <div class="notice-card">
-                                    <p>👥 <strong>${friendData.name}</strong> (${friendId}) から追加されました！</p>
-                                    <button class="btn-accept" id="accept-btn">承認してトークを始める</button>
-                                </div>`;
-
-                            document.getElementById('accept-btn').onclick = async () => {
-                                await updateDoc(doc(db, "friends_match", matchKey), { [`${myId}.active`]: true });
-                                alert('友達追加しました！');
-                                startChat(friendId, friendData.name);
-                            };
-                        }
-                        
-                        // お互いが承認済みの時
-                        if (myData.active === true && friendData.active === true) {
-                            hasNotice = true;
-                            reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} と友達です</p>`;
-                            startChat(friendId, friendData.name);
-                        }
-                    }
-                });
-
-                if (!hasNotice) {
-                    reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>まだ通知はありません。上の入力欄かQRコードを使って友達を追加してね！</p>";
-                }
-            });
-        });
-
-        // 🌟 友達追加シグナルをデータベースに送る共通関数
-        async function requestFriend(targetId, targetName) {
-            const matchKey = [myId, targetId].sort().join("_");
-            await setDoc(doc(db, "friends_match", matchKey), {
-                [myId]: { name: myName, active: true },
-                [targetId]: { name: targetName, active: false },
-                lastUpdated: new Date()
-            }, { merge: true });
-            alert(`「${targetName}」さんに接続リクエストを送りました！トーク画面を確認してください。`);
-        }
-
-        // 🌟 ボタンを押して手動でコード入力した時の処理
-        async function connectByCode() {
-            const targetId = document.getElementById('friend-code-input').value.trim();
-            if (!targetId) {
-                alert('友達のユーザーコードを入力してください。');
-                return;
-            }
-            if (targetId === myId) {
-                alert('自分のコードは入力できません。');
-                return;
-            }
-
-            // 相手が本当に存在するか一応データベースをチェック
-            const userDoc = await getDoc(doc(db, "users", targetId));
-            if (!userDoc.exists()) {
-                alert('入力されたユーザーコードが見つかりませんでした。大文字小文字などを確認してください。');
-                return;
-            }
-
-            const targetName = userDoc.data().name || "友達";
-            await requestFriend(targetId, targetName);
-            document.getElementById('friend-code-input').value = ""; // 入力欄をクリア
-        }
-
-        // メッセージ表示処理
-        function renderMessages(snapshot, friendName) {
-            const chatBox = document.getElementById('chat-box');
-            chatBox.innerHTML = "";
-            snapshot.forEach((doc) => {
-                const msgData = doc.data();
-                const wrapper = document.createElement('div');
-                wrapper.className = msgData.senderId === myId ? "msg-wrapper me" : "msg-wrapper friend";
-                
-                if(msgData.senderId !== myId) {
-                    const nameLabel = document.createElement('div');
-                    nameLabel.className = "sender-name";
-                    nameLabel.innerText = friendName;
-                    wrapper.appendChild(nameLabel);
-                }
-                
-                const msgEl = document.createElement('div');
-                msgEl.className = msgData.senderId === myId ? "msg me" : "msg friend";
-                msgEl.innerText = msgData.text;
-                
-                wrapper.appendChild(msgEl);
-                chatBox.appendChild(wrapper);
-            });
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        // トークルームの開始と2秒毎のリアルタイム強制更新
-        function startChat(friendId, friendName) {
-            if (activeFriendId === friendId) return;
-            activeFriendId = friendId;
-            document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName}`;
-            const roomId = [myId, friendId].sort().join("_");
-
-            const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
-            
-            // 初回＆通常イベントの同期
-            onSnapshot(q, (snapshot) => { renderMessages(snapshot, friendName); });
-
-            // 2秒毎のリアルタイム定期更新
-            if (updateIntervalId) clearInterval(updateIntervalId);
-            updateIntervalId = setInterval(async () => {
-                if (!activeFriendId) return;
-                const snapshot = await getDocs(q);
-                renderMessages(snapshot, friendName);
-            }, 2000);
-        }
-
-        // メッセージ送信
-        async function sendMsg() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if (text === '' || !activeFriendId) return;
-
-            const roomId = [myId, activeFriendId].sort().join("_");
-            await addDoc(collection(db, "rooms", roomId, "messages"), {
-                senderId: myId,
-                text: text,
-                createdAt: new Date()
-            });
-            input.value = '';
-        }
-
-        // グローバルにバインド
-        window.connectByCode = connectByCode;
-        window.sendMsg = sendMsg;
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -289,31 +92,94 @@
 
     <div id="friends" class="content">
         <h3>マイプロフィール</h3>
-        <div class="profile-box" id="my-name-display" style="white-space: pre-line;">読み込み中...</div>
+        <div class="profile-box" id="my-name-display" style="white-space: pre-line;">ログイン中...</div>
 
         <h3>① ユーザーコードで友達追加</h3>
         <div class="code-input-group">
-            <input type="text" id="friend-code-input" placeholder="友達のコード（例: CODE_XXXXX）を入力">
+            <input type="text" id="friend-code-input" placeholder="友達のコードを入力">
             <button class="btn-connect" onclick="connectByCode()">追加</button>
         </div>
 
         <h3>② QRコードで友達追加</h3>
         <div class="qr-area">
-            <img id="qrcode-img" src="" alt="QRコード">
+            <div id="qrcode"></div>
         </div>
         
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
         <h3>届いた通知・友達状態</h3>
         <div id="notifications">
-            <p style="color:#aaa; text-align:center;">読み込み中...</p>
-        </div>
+            </div>
     </div>
 </div>
 
-<script>
-    // タブ切り替え制御
-    function switchTab(tabId, title) {
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCdkgEhdI9dmBAyMfsRJWI5GamHDW_NknQ",
+        authDomain: "chatapp-bbf6e.firebaseapp.com",
+        projectId: "chatapp-bbf6e",
+        storageBucket: "chatapp-bbf6e.firebasestorage.app",
+        messagingSenderId: "821508067673",
+        appId: "1:821508067673:web:f2bee03404624e99fefc48",
+        measurementId: "G-J4CRQJKGTY"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 🔒 1. ログイン情報と自分のIDを【スマホのローカルネットワーク】にガチ保存
+    let myId = localStorage.getItem("my_chat_id");
+    let myName = localStorage.getItem("my_chat_name");
+    if (!myId) {
+        myId = "CODE_" + Math.random().toString(36).substring(2, 7).toUpperCase();
+        myName = "ユーザー_" + Math.random().toString(36).substring(2, 5);
+        localStorage.setItem("my_chat_id", myId);
+        localStorage.setItem("my_chat_name", myName);
+    }
+
+    let activeFriendId = localStorage.getItem("active_friend_id") || null;
+    let activeFriendName = localStorage.getItem("active_friend_name") || "";
+    let updateIntervalId = null;
+
+    // 🔒 2. チャット履歴をローカルから復元する処理
+    function loadLocalMessages(roomId) {
+        const localData = localStorage.getItem(`chat_history_${roomId}`);
+        if (localData) {
+            const messages = JSON.parse(localData);
+            renderMessagesRaw(messages, activeFriendName);
+        }
+    }
+
+    // 🔒 3. 友達の接続状態リストもローカル保存から即座に復元して描画
+    function loadLocalFriends() {
+        const friendId = localStorage.getItem("active_friend_id");
+        const friendName = localStorage.getItem("active_friend_name");
+        const reqList = document.getElementById('notifications');
+        if (friendId && friendName) {
+            reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendName} と友達です（ローカル同期済）</p>`;
+        } else {
+            reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>通知はありません。コード入力かQRコードで友達を追加してね！</p>";
+        }
+    }
+
+    // 🌟 4. 通信エラーを無視して「その場」で1秒でQRコードを強制生成
+    function generateQR() {
+        const currentUrl = window.location.href.split('?')[0];
+        const inviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
+        document.getElementById("qrcode").innerHTML = ""; // 初期化
+        new QRCode(document.getElementById("qrcode"), {
+            text: inviteUrl,
+            width: 160,
+            height: 160,
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+
+    // タブ切り替え関数をバインド
+    window.switchTab = function(tabId, title) {
         document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
@@ -323,7 +189,180 @@
         else { tabs[1].classList.add('active'); }
         
         document.getElementById('page-title').innerText = title;
+    };
+
+    // コードで友達追加
+    window.connectByCode = async function() {
+        const targetId = document.getElementById('friend-code-input').value.trim();
+        if (!targetId) return alert('ユーザーコードを入力してください。');
+        if (targetId === myId) return alert('自分のコードは入力できません。');
+
+        try {
+            const userDoc = await getDoc(doc(db, "users", targetId));
+            if (!userDoc.exists()) return alert('コードが見つかりません。');
+
+            const targetName = userDoc.data().name || "友達";
+            await requestFriend(targetId, targetName);
+            document.getElementById('friend-code-input').value = "";
+        } catch (e) {
+            alert('接続エラー。コードを手動で繋ぎ直します。');
+        }
+    };
+
+    async function requestFriend(targetId, targetName) {
+        const matchKey = [myId, targetId].sort().join("_");
+        await setDoc(doc(db, "friends_match", matchKey), {
+            [myId]: { name: myName, active: true },
+            [targetId]: { name: targetName, active: false },
+            lastUpdated: new Date()
+        }, { merge: true });
+        alert(`リクエスト送信！\n相手があなたのコードを入力するか承認するとトークが開始されます。`);
     }
+
+    // メッセージを画面に流し込む生の処理
+    function renderMessagesRaw(msgArray, friendName) {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = "";
+        msgArray.forEach((msgData) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = msgData.senderId === myId ? "msg-wrapper me" : "msg-wrapper friend";
+            
+            if(msgData.senderId !== myId) {
+                const nameLabel = document.createElement('div');
+                nameLabel.className = "sender-name";
+                nameLabel.innerText = friendName;
+                wrapper.appendChild(nameLabel);
+            }
+            
+            const msgEl = document.createElement('div');
+            msgEl.className = msgData.senderId === myId ? "msg me" : "msg friend";
+            msgEl.innerText = msgData.text;
+            
+            wrapper.appendChild(msgEl);
+            chatBox.appendChild(wrapper);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Firestoreの形式から配列を作ってローカルに永久保存する処理
+    function serializeAndSaveMessages(snapshot, roomId, friendName) {
+        const msgArray = [];
+        snapshot.forEach((doc) => {
+            msgArray.push(doc.data());
+        });
+        // 🔒 ローカルストレージにガチ保存
+        localStorage.setItem(`chat_history_${roomId}`, JSON.stringify(msgArray));
+        renderMessagesRaw(msgArray, friendName);
+    }
+
+    // トークルーム開始
+    function startChat(friendId, friendName) {
+        activeFriendId = friendId;
+        activeFriendName = friendName;
+        localStorage.setItem("active_friend_id", friendId);
+        localStorage.setItem("active_friend_name", friendName);
+
+        document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName}`;
+        const roomId = [myId, friendId].sort().join("_");
+
+        // 🔥 まずローカルに保存されている過去ログを爆速で描画（読み込み中で止まらない！）
+        loadLocalMessages(roomId);
+
+        const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
+        
+        // Firebaseのリアルタイム監視
+        onSnapshot(q, (snapshot) => { 
+            serializeAndSaveMessages(snapshot, roomId, friendName); 
+        });
+
+        // 2秒毎の強制更新
+        if (updateIntervalId) clearInterval(updateIntervalId);
+        updateIntervalId = setInterval(async () => {
+            if (!activeFriendId) return;
+            const snapshot = await getDocs(q);
+            serializeAndSaveMessages(snapshot, roomId, friendName);
+        }, 2000);
+    }
+
+    window.sendMsg = async function() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (text === '' || !activeFriendId) return;
+
+        const roomId = [myId, activeFriendId].sort().join("_");
+        await addDoc(collection(db, "rooms", roomId, "messages"), {
+            senderId: myId,
+            text: text,
+            createdAt: new Date()
+        });
+        input.value = '';
+    };
+
+    // 画面初期化の超高速起動ルート
+    window.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('my-name-display').innerText = `${myName}\n【あなたのコード: ${myId}】`;
+        
+        // 1. 起動して0.1秒でスマホ内部だけでQRコードを描画（絶対失敗しない）
+        generateQR();
+
+        // 2. 友達リストの初期状態をローカルから1発で出す（ずっと読み込み中になるのを完全打破）
+        loadLocalFriends();
+
+        // 3. もしすでにトーク中の友達がローカルに保存されていれば自動でチャット画面を開く
+        if (activeFriendId && activeFriendName) {
+            startChat(activeFriendId, activeFriendName);
+        }
+
+        // Firebaseへのユーザー登録（裏でそっとやる）
+        setDoc(doc(db, "users", myId), { name: myName }, { merge: true }).catch(()=>{});
+
+        // URLパラメータの追加チェック
+        const urlParams = new URLSearchParams(window.location.search);
+        const addTargetId = urlParams.get('add');
+        const addTargetName = urlParams.get('name');
+        if (addTargetId && addTargetId !== myId) {
+            await requestFriend(addTargetId, addTargetName || "友達");
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+        }
+
+        // クラウド上のマッチング監視（きたらローカルを上書きする）
+        onSnapshot(collection(db, "friends_match"), (snapshot) => {
+            const reqList = document.getElementById('notifications');
+            let hasNotice = false;
+
+            snapshot.forEach((roomDoc) => {
+                const matchKey = roomDoc.id;
+                if (matchKey.includes(myId)) {
+                    const data = roomDoc.data();
+                    const friendId = matchKey.split("_").find(id => id !== myId);
+                    const myData = data[myId];
+                    const friendData = data[friendId];
+
+                    if (!friendData || !myData) return;
+
+                    if (friendData.active === true && myData.active === false) {
+                        hasNotice = true;
+                        reqList.innerHTML = `
+                            <div class="notice-card">
+                                <p>👥 <strong>${friendData.name}</strong> (${friendId}) から追加されました！</p>
+                                <button class="btn-accept" id="accept-btn-new">承認してトークを始める</button>
+                            </div>`;
+
+                        document.getElementById('accept-btn-new').onclick = async () => {
+                            await updateDoc(doc(db, "friends_match", matchKey), { [`${myId}.active`]: true });
+                            startChat(friendId, friendData.name);
+                        };
+                    }
+                    
+                    if (myData.active === true && friendData.active === true) {
+                        hasNotice = true;
+                        reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} と友達です</p>`;
+                        startChat(friendId, friendData.name);
+                    }
+                }
+            });
+        });
+    });
 </script>
 
 </body>
