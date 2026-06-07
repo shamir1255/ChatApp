@@ -188,7 +188,6 @@
 </div>
 
 <audio id="remote-audio" autoplay></audio>
-
 <script>
     let myCode = localStorage.getItem("my_friend_code_3digit");
     if (!myCode || myCode.length !== 3 || isNaN(myCode)) {
@@ -237,7 +236,9 @@
         
         banner.classList.add("show");
         setTimeout(() => { banner.classList.remove("show"); }, 3500);
-    }    document.addEventListener("visibilitychange", () => {
+    }
+
+    document.addEventListener("visibilitychange", () => {
         isPageVisible = (document.visibilityState === "visible");
         if (isPageVisible && currentActiveFriendCode) { clearUnreadAndSync(currentActiveFriendCode); }
     });
@@ -607,4 +608,3 @@
 </script>
 </body>
 </html>
-
