@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (写真バグ修正版)</title>
+    <title>LINE風P2P (スマート高画質版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
@@ -30,8 +30,8 @@
         .msg { padding: 6px 10px; border-radius: 12px; max-width: 70%; word-break: break-all; }
         .msg.me { background: #85e29e; border-top-right-radius: 2px; }
         .msg.friend { background: #fff; border-top-left-radius: 2px; }
-        .msg img { max-width: 100%; min-width: 80px; min-height: 50px; border-radius: 8px; display: block; margin: 2px 0; background: #eee; }
-        .status { font-size: 9px; color: rgba(255,255,255,0.7); margin-right: 4px; text-align: right; }
+        .msg img { max-width: 120px; max-height: 120px; border-radius: 8px; display: block; margin: 2px 0; cursor: zoom-in; transition: transform 0.2s; background: #eee; }
+        .status { font-size: 9px; color: rgba(255,255,255,0.8); margin-right: 4px; text-align: right; line-height: 1.1; font-weight: bold; min-width: 55px; }
         .left-back-btn { position: absolute; left: 0; top: 40%; width: 34px; height: 50px; background: rgba(30,42,56,0.85); color: white; border: none; border-radius: 0 8px 8px 0; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 40; }
         .compact-input-cluster { position: absolute; right: 12px; top: 55%; display: flex; flex-direction: column; gap: 5px; z-index: 30; }
         .compact-input-cluster input[type="text"] { width: 54px; height: 54px; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-size: 11px; text-align: center; outline: none; background: #fff; }
@@ -41,11 +41,18 @@
         .loading-box { background: #fff; padding: 20px; border-radius: 12px; text-align: center; width: 200px; font-size: 12px; }
         .bar-bg { background: #e0e0e0; height: 6px; border-radius: 3px; overflow: hidden; margin: 10px 0; }
         .bar-fill { background: var(--green); height: 100%; width: 0%; transition: width 0.05s linear; }
+        
+        /* 📷 画像全画面プレビュー用スタイル */
+        .img-preview-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 10000; cursor: zoom-out; }
+        .img-preview-overlay img { max-width: 95vw; max-height: 90vh; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); object-fit: contain; }
     </style>
 </head>
 <body>
 
 <div class="overlay" id="loader"><div class="loading-box">⚙️ 高速読込システム<div class="bar-bg"><div class="bar-fill" id="bar"></div></div><div id="status">読込中... (0/20MB)</div></div></div>
+
+<!-- 📷 全画面プレビュー枠 -->
+<div class="img-preview-overlay" id="img-preview" onclick="closeImgPreview()"><img id="preview-target" src=""></div>
 
 <div class="container">
     <div class="header" id="main-title">トーク一覧</div>
@@ -83,7 +90,7 @@
 
     const PREFIX = "line_m3_";
     let db = JSON.parse(localStorage.getItem("db3")) || {};
-    let peer = null, conns = {}, activeCode = null, cooling = false;
+    let peer = null, conns = {}, activeCode = null, cooling = false, timerInterval = null;
 
     function preload(cb) {
         let size = 0, total = 20;
@@ -127,7 +134,7 @@
                 else db[code].unread++;
                 save(); renderList(); if(activeCode===code) renderMsgs();
             } else if (d.type === 'read') {
-                db[code].history.forEach(m => { if(m.sender==='me') m.read = d.t; });
+                db[code].history.forEach(m => { if(m.sender==='me' && !m.read) m.read = d.t; });
                 save(); if(activeCode===code) renderMsgs();
             }
         });
@@ -184,9 +191,18 @@
         db[code].unread = 0; save();
         if(conns[code]?.open) conns[code].send({type:'read', t:Date.now()});
         renderMsgs();
+        // ⚡ 既読時間更新用の1秒タイマー開始
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(renderMsgs, 1000);
     }
 
-    function closeChat() { activeCode = null; document.getElementById("chat-window").style.display = "none"; document.getElementById("tabs").style.display = "flex"; tab('chats'); }
+    function closeChat() { 
+        activeCode = null; 
+        if(timerInterval) clearInterval(timerInterval);
+        document.getElementById("chat-window").style.display = "none"; 
+        document.getElementById("tabs").style.display = "flex"; 
+        tab('chats'); 
+    }
 
     function sendMsg() {
         if(cooling || !activeCode) return;
@@ -196,7 +212,7 @@
         input.value = '';
     }
 
-    // 📷 写真送信処理【バグ修正：超・超軽量化ビルド】
+    // 📷 写真送信（電波が弱くても送れる高画質チューニング）
     function sendImage(input) {
         if (!input.files || !input.files[0] || !activeCode) return;
         let reader = new FileReader();
@@ -205,7 +221,7 @@
             img.src = e.target.result;
             img.onload = function () {
                 let canvas = document.createElement('canvas');
-                let max = 120; // ⚡ 電波不良対策：データ千切れを防ぐため120pxに限界縮小！
+                let max = 320; // 通常時とプレビューのバランスをとったスマート高解像度
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > max) { h *= max / w; w = max; } }
                 else { if (h > max) { w *= max / h; h = max; } }
@@ -213,8 +229,8 @@
                 let ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
                 
-                // ⚡ 画質を20%まで落とし、パケット詰まりを完全に防止
-                let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.2); 
+                // 画質を45%に調整。パケットが千切れず、かつ拡大しても綺麗に見える最適値
+                let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.45); 
                 executeSend(compressedDataUrl, true);
             };
         };
@@ -236,25 +252,53 @@
         setTimeout(() => { cooling = false; document.getElementById('send-btn').disabled = false; }, 500);
     }
 
+    // ⚡ 【復活＆超強化】何秒前既読計算 + プレビューイベント付与
     function renderMsgs() {
-        let box = document.getElementById('chat-box'); box.innerHTML = "";
+        let box = document.getElementById('chat-box'); 
         if(!activeCode) return;
+        
+        // スクロール位置を保持するための判定
+        let isAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 30;
+        box.innerHTML = "";
+        
+        let now = Date.now();
         db[activeCode].history.forEach(m => {
             let row = document.createElement('div'); row.className = `msg-row ${m.sender==='me'?'':'friend'}`;
             if(m.sender==='me') {
-                let st = document.createElement('div'); st.className = "status"; st.innerText = m.read ? "既読" : "未読"; row.appendChild(st);
+                let st = document.createElement('div'); st.className = "status";
+                if(m.read) {
+                    let diff = Math.floor((now - m.read) / 1000);
+                    if(diff < 5) st.innerText = "既読\n(今)";
+                    else if(diff < 60) st.innerText = `既読\n(${diff}秒前)`;
+                    else st.innerText = `既読\n(${Math.floor(diff/60)}分前)`;
+                } else {
+                    st.innerText = "未読";
+                }
+                row.appendChild(st);
             }
             let el = document.createElement('div'); el.className = `msg ${m.sender==='me'?'me':'friend'}`;
             if(m.isImg) {
-                // 読み込み完了前のカクつき防止にスタイルを最適化
-                el.innerHTML = `<img src="${m.text}" loading="lazy" onload="document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;">`;
+                el.innerHTML = `<img src="${m.text}" onclick="openImgPreview('${m.text}')" loading="lazy">`;
             } else {
                 el.innerText = m.text;
             }
             row.appendChild(el); box.appendChild(row);
         });
-        box.scrollTop = box.scrollHeight;
+        if(isAtBottom) box.scrollTop = box.scrollHeight;
     }
+
+    // 📷 タップで画像全画面プレビューを開く
+    window.openImgPreview = function(base64Data) {
+        let previewOverlay = document.getElementById("img-preview");
+        let previewTarget = document.getElementById("preview-target");
+        previewTarget.src = base64Data;
+        previewOverlay.style.display = "flex";
+    };
+
+    // 📷 プレビューを閉じる
+    window.closeImgPreview = function() {
+        document.getElementById("img-preview").style.display = "none";
+    };
 
     function save() { localStorage.setItem("db3", JSON.stringify(db)); }
 
