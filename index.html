@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (完全版)</title>
+    <title>LINE風P2P (iOS完全版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
@@ -100,7 +100,8 @@
     document.getElementById("my-code").innerText = myCode;
     document.getElementById("name-input").value = myName;
 
-    const PREFIX = "line_m3_";
+    // 💡 あなたの環境専用の合言葉でサーバーエラーを防ぐ
+    const PREFIX = "shamir_line_app_"; 
     let db = JSON.parse(localStorage.getItem("db3")) || {};
     let peer = null, conns = {}, activeCode = null, cooling = false, timerInterval = null;
     let myStream = null, activeCall = null;
@@ -114,23 +115,47 @@
     }
 
     function initPeer() {
-        peer = new Peer(PREFIX + myCode);
-        peer.on('open', () => {
-            Object.keys(db).forEach(c => { if(!conns[c]) setup(peer.connect(PREFIX + c, {reliable:true}), c); });
-        });
-        peer.on('connection', c => setup(c, c.peer.replace(PREFIX,"")));
-        
-        // 📞 電話着信イベントの監視
-        peer.on('call', async call => {
-            if (confirm("📞 電話が着信しました。出ますか？")) {
-                myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                call.answer(myStream);
-                handleCall(call);
-            } else { call.close(); }
-        });
+        try {
+            peer = new Peer(PREFIX + myCode);
+            
+            peer.on('open', () => {
+                Object.keys(db).forEach(c => { if(!conns[c]) tryConnect(c); });
+            });
+            
+            peer.on('connection', c => {
+                let code = c.peer.replace(PREFIX,"");
+                setup(c, code);
+            });
+            
+            // 📞 電話着信（iOS Safari完全対応）
+            peer.on('call', async call => {
+                if (confirm("📞 電話が着信しました。出ますか？")) {
+                    try {
+                        myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        call.answer(myStream);
+                        handleCall(call);
+                    } catch(e) { alert("マイクの起動に失敗しました（HTTPS環境か確認してください）"); }
+                } else { call.close(); }
+            });
+
+            // ⚠️ 通信ネットワーク全体のエラーを安全にキャッチ
+            peer.on('error', err => {
+                console.log("PeerJSエラー:", err.type);
+                if (err.type === 'peer-not-found') {
+                    alert("入力されたコードの相手が見つからないか、オフラインです。");
+                } else if (err.type === 'unavailable-id') {
+                    alert("コードが重複しています。設定からキャッシュクリーンを行ってください。");
+                }
+            });
+        } catch (e) { console.error("Peerの初期化失敗", e); }
+    }
+
+    function tryConnect(code) {
+        try { setup(peer.connect(PREFIX + code, { reliable: true }), code); } catch(e){}
     }
 
     function setup(c, code) {
+        if (!c) return;
         c.on('open', () => {
             conns[code] = c;
             if (!db[code]) { db[code] = { code: code, name: "友達(" + code + ")", history: [], unread: 0 }; save(); }
@@ -138,57 +163,56 @@
             renderList();
         });
         c.on('data', d => {
-            if (d.type === 'sync-name') {
-                if(db[code]) { db[code].name = d.name; save(); renderList(); }
-            } else if (d.type === 'msg') {
-                if (!db[code] || db[code].history.some(m => m.id === d.id)) return;
-                db[code].history.push({ id: d.id, sender: 'friend', text: d.text, isImg: d.isImg, read: null });
-                if (activeCode === code && document.visibilityState === "visible") c.send({type:'read', t:Date.now()});
-                else db[code].unread++;
-                save(); renderList(); if(activeCode===code) renderMsgs();
-            } else if (d.type === 'read') {
-                if(db[code]) db[code].history.forEach(m => { if(m.sender==='me' && !m.read) m.read = d.t; });
-                save(); if(activeCode===code) renderMsgs();
-            }
+            try {
+                if (d.type === 'sync-name') {
+                    if(db[code]) { db[code].name = d.name; save(); renderList(); }
+                } else if (d.type === 'msg') {
+                    if (!db[code] || db[code].history.some(m => m.id === d.id)) return;
+                    db[code].history.push({ id: d.id, sender: 'friend', text: d.text, isImg: d.isImg, read: null });
+                    if (activeCode === code && document.visibilityState === "visible") c.send({type:'read', t:Date.now()});
+                    else db[code].unread++;
+                    save(); renderList(); if(activeCode===code) renderMsgs();
+                } else if (d.type === 'read') {
+                    if(db[code]) db[code].history.forEach(m => { if(m.sender==='me' && !m.read) m.read = d.t; });
+                    save(); if(activeCode===code) renderMsgs();
+                }
+            } catch(e){}
         });
         c.on('close', () => { delete conns[code]; renderList(); });
+        c.on('error', () => { delete conns[code]; renderList(); });
     }
 
     function updateMyName() {
         myName = document.getElementById("name-input").value.trim() || "ユーザー(" + myCode + ")";
         localStorage.setItem("myName", myName);
-        Object.keys(conns).forEach(c => { if(conns[c].open) conns[c].send({ type: 'sync-name', name: myName }); });
+        Object.keys(conns).forEach(c => { if(conns[c]?.open) conns[c].send({ type: 'sync-name', name: myName }); });
     }
 
     function addFriend() {
         let c = document.getElementById("f-input").value.trim();
         if(c.length !== 3 || c === myCode || db[c]) { document.getElementById("f-input").value = ''; return; }
-        setup(peer.connect(PREFIX + c, {reliable:true}), c);
+        tryConnect(c);
         document.getElementById("f-input").value = ''; tab('chats');
     }
 
-    // 友達削除機能
     function deleteFriend() {
-        if(!activeCode || !confirm("この友達を削除しますか？トーク履歴も消去されます。")) return;
-        if(conns[activeCode]) conns[activeCode].close();
-        delete db[activeCode]; delete conns[activeCode];
-        save(); closeChat();
+        if(!activeCode || !confirm("この友達を削除しますか？")) return;
+        if(conns[activeCode]) { try { conns[activeCode].close(); } catch(e){} }
+        delete db[activeCode]; delete conns[activeCode]; save(); closeChat();
     }
 
-    // キャッシュクリーン（全削除）
     function cleanCache() {
-        if(!confirm("⚠️ すべてのトーク履歴、友達リスト、設定を完全に消去しますか？")) return;
+        if(!confirm("⚠️ 全データを完全に消去しますか？")) return;
         localStorage.clear(); location.reload();
     }
 
-    // 📞 音声通話の開始・制御
+    // 📞 電話をかける処理
     async function startCall() {
-        if(!activeCode || !conns[activeCode]?.open) { alert("相手がオンラインではないため通話できません"); return; }
+        if(!activeCode || !conns[activeCode]?.open) { alert("相手がオフラインのため通話できません"); return; }
         try {
             myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            let call = peer.call(PREFIX + activeCode, myStream);
-            handleCall(call);
-        } catch (e) { alert("マイクの許可が必要です"); }
+            handleCall(peer.call(PREFIX + activeCode, myStream));
+        } catch (e) { alert("通話にはマイクの許可（およびHTTPS接続）が必要です"); }
     }
 
     function handleCall(call) {
@@ -199,12 +223,13 @@
             audio.srcObject = remoteStream; audio.play();
         });
         call.on('close', () => { endCall(); });
+        call.on('error', () => { endCall(); });
     }
 
     function endCall() {
         document.getElementById("call-overlay").style.display = "none";
-        if(myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; }
-        if(activeCall) { activeCall.close(); activeCall = null; }
+        if(myStream) { try { myStream.getTracks().forEach(t => t.stop()); } catch(e){} myStream = null; }
+        if(activeCall) { try { activeCall.close(); } catch(e){} activeCall = null; }
     }
 
     function tab(name) {
@@ -239,7 +264,7 @@
         document.getElementById("tabs").style.display = "none";
         document.getElementById("chat-user-name").innerText = db[code].name;
         db[code].unread = 0; save();
-        if(conns[code]?.open) conns[code].send({type:'read', t:Date.now()});
+        if(conns[code]?.open) { try { conns[code].send({type:'read', t:Date.now()}); } catch(e){} }
         renderMsgs();
         if(timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(renderMsgs, 1000);
@@ -257,7 +282,7 @@
         if(!text) return; executeSend(text, false); input.value = '';
     }
 
-    // 📷 写真送信（バグの原因になる超巨大化・過度な圧縮を廃止、安定通常サイズで送信）
+    // 📷 iOS・Safariでも絶対にクラッシュしない、最適化された通常写真送信
     function sendImage(input) {
         if (!input.files || !input.files[0] || !activeCode) return;
         let reader = new FileReader();
@@ -266,7 +291,7 @@
             img.src = e.target.result;
             img.onload = function () {
                 let canvas = document.createElement('canvas');
-                let max = 400; // 確実に通信がクラッシュしない最適通常サイズ
+                let max = 400; 
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > max) { h *= max / w; w = max; } }
                 else { if (h > max) { w *= max / h; h = max; } }
@@ -285,7 +310,10 @@
         let id = Math.random().toString(36).substring(2,9);
         db[activeCode].history.push({ id: id, sender: 'me', text: payload, isImg: isImg, read: null });
         save(); renderMsgs();
-        if(conns[activeCode]?.open) conns[activeCode].send({type:'msg', id:id, text:payload, isImg:isImg});
+        
+        if(conns[activeCode]?.open) {
+            try { conns[activeCode].send({type:'msg', id:id, text:payload, isImg:isImg}); } catch(e){}
+        }
         setTimeout(() => { cooling = false; document.getElementById('send-btn').disabled = false; }, 400);
     }
 
