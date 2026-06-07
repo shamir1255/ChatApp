@@ -27,18 +27,16 @@
         .content { flex: 1; overflow-y: auto; display: none; box-sizing: border-box; height: calc(100vh - 115px); background: var(--line-bg); }
         .content.active { display: flex; flex-direction: column; }
         
-        /* 1. チャット画面（トークエリア） */
+        /* チャット画面 */
         #chat { padding: 0; }
         .chat-room-info { background: rgba(0,0,0,0.15); color: white; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 500; }
         .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; box-sizing: border-box; }
         
-        /* LINE風吹き出し装飾 */
+        /* メッセージ吹き出し */
         .msg-wrapper { display: flex; flex-direction: column; max-width: 75%; position: relative; }
         .msg-wrapper.me { align-self: flex-end; align-items: flex-end; }
         .msg-wrapper.friend { align-self: flex-start; align-items: flex-start; }
-        
         .sender-name { font-size: 11px; color: rgba(255,255,255,0.8); margin-bottom: 3px; padding-left: 5px; }
-        
         .msg { padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-break: break-all; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg.me { background-color: var(--msg-me); border-top-right-radius: 2px; color: #000; }
         .msg.friend { background-color: var(--msg-friend); border-top-left-radius: 2px; color: #000; }
@@ -47,33 +45,33 @@
         .input-area { display: flex; padding: 10px 12px; background: #f6f6f6; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; z-index: 10; align-items: center; }
         .input-area input { flex: 1; padding: 10px 16px; border: 1px solid #ddd; border-radius: 22px; outline: none; font-size: 15px; background: white; }
         .input-area input:focus { border-color: var(--line-green); }
-        .input-area button { border: none; background: var(--line-green); color: white; padding: 10px 18px; border-radius: 22px; margin-left: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .input-area button:active { opacity: 0.8; }
+        .input-area button { border: none; background: var(--line-green); color: white; padding: 10px 18px; border-radius: 22px; margin-left: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
         
-        /* 2. 友達追加画面（ホワイトベース） */
+        /* 友達追加画面 */
         #friends { background: #ffffff; padding: 24px; }
         h3 { font-size: 16px; color: var(--line-dark); border-left: 4px solid var(--line-green); padding-left: 8px; margin-top: 0; margin-bottom: 12px; }
-        .profile-box { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 24px; border: 1px solid #eee; }
+        .profile-box { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; border: 1px solid #eee; }
         
-        /* QR表示エリア */
-        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 15px 0 24px 0; background: #ffffff; padding: 20px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); min-height: 200px; }
-        #qrcode-img { display: block; max-width: 200px; max-height: 200px; margin: 0 auto; border: 1px solid #eee; padding: 5px; background: white; }
+        /* コード入力フォーム */
+        .code-input-group { display: flex; gap: 8px; margin-bottom: 24px; }
+        .code-input-group input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; }
+        .code-input-group input:focus { border-color: var(--line-dark); }
+        .btn-connect { padding: 12px 20px; background: var(--line-dark); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         
-        /* カメラ・スキャンエリア */
-        .btn-action { width: 100%; padding: 14px; background: var(--line-dark); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px; transition: background 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-action:active { background: #0b131c; }
-        #reader { width: 100%; max-width: 280px; margin: 15px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        /* QRエリア */
+        .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0 24px 0; background: #ffffff; padding: 15px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        #qrcode-img { display: block; max-width: 160px; max-height: 160px; margin: 0 auto; background: white; }
         
         /* 通知カード */
         .notice-card { background: #fff3cd; padding: 16px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
         .notice-card p { margin: 0 0 12px 0; font-size: 14px; color: #664d03; }
         .btn-accept { background: var(--line-green); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; }
-        #notifications { min-height: 50px; }
+        #notifications { min-height: 40px; }
     </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCdkgEhdI9dmBAyMfsRJWI5GamHDW_NknQ",
@@ -88,46 +86,41 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 自分のIDと名前を決定（なければ新規生成、あれば固定）
         let myId = localStorage.getItem("my_chat_id");
         let myName = localStorage.getItem("my_chat_name");
         if (!myId) {
-            myId = "user_" + Math.random().toString(36).substring(2, 9);
+            myId = "code_" + Math.random().toString(36).substring(2, 7).toUpperCase(); // シンプルな5文字コードに
             myName = "ユーザー_" + Math.random().toString(36).substring(2, 5);
             localStorage.setItem("my_chat_id", myId);
             localStorage.setItem("my_chat_name", myName);
         }
 
         let activeFriendId = null;
-        let activeFriendName = "";
-        let updateIntervalId = null; // 2秒ごとのタイマーを管理するID
+        let updateIntervalId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('my-name-display').innerText = `${myName} (ID: ${myId})`;
+            // 画面表示を更新
+            document.getElementById('my-name-display').innerText = `${myName}\n【あなたのコード: ${myId}】`;
+            
+            // Firebaseに自分の名前を登録
             await setDoc(doc(db, "users", myId), { name: myName }, { merge: true });
 
+            // 🌟 超シンプル設計のQRコード生成
             const currentUrl = window.location.href.split('?')[0];
-            const myInviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
-            
-            const googleQrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(myInviteUrl)}`;
-            document.getElementById("qrcode-img").src = googleQrApiUrl;
+            const inviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
+            document.getElementById("qrcode-img").src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(inviteUrl)}`;
 
+            // URLからの自動友達追加チェック
             const urlParams = new URLSearchParams(window.location.search);
             const addTargetId = urlParams.get('add');
             const addTargetName = urlParams.get('name');
-
             if (addTargetId && addTargetId !== myId) {
-                const matchKey = [myId, addTargetId].sort().join("_");
-                await setDoc(doc(db, "friends_match", matchKey), {
-                    [myId]: { name: myName, active: true },
-                    [addTargetId]: { name: addTargetName, active: false },
-                    lastUpdated: new Date()
-                }, { merge: true });
-
-                alert(`「${addTargetName}」さんへの接続信号を送りました！トーク画面を確認してください。`);
-                window.history.replaceState({}, document.title, currentUrl);
+                requestFriend(addTargetId, addTargetName || "友達");
+                window.history.replaceState({}, document.title, currentUrl); // URLを綺麗にする
             }
 
-            // リアルタイムマッチング監視
+            // 友達マッチングのリアルタイム監視
             onSnapshot(collection(db, "friends_match"), (snapshot) => {
                 const reqList = document.getElementById('notifications');
                 let hasNotice = false;
@@ -142,26 +135,23 @@
 
                         if (!friendData || !myData) return;
 
+                        // 申請が来ている時
                         if (friendData.active === true && myData.active === false) {
                             hasNotice = true;
-                            reqList.innerHTML = "";
-                            const card = document.createElement('div');
-                            card.className = "notice-card";
-                            card.innerHTML = `
-                                <p>👥 <strong>${friendData.name}</strong> から友達追加されました！</p>
-                                <button class="btn-accept" id="accept-btn">追加してトークを始める</button>
-                            `;
-                            reqList.appendChild(card);
+                            reqList.innerHTML = `
+                                <div class="notice-card">
+                                    <p>👥 <strong>${friendData.name}</strong> (${friendId}) から追加されました！</p>
+                                    <button class="btn-accept" id="accept-btn">承認してトークを始める</button>
+                                </div>`;
 
                             document.getElementById('accept-btn').onclick = async () => {
-                                await updateDoc(doc(db, "friends_match", matchKey), {
-                                    [`${myId}.active`]: true
-                                });
-                                alert('友達追加が完了しました！');
+                                await updateDoc(doc(db, "friends_match", matchKey), { [`${myId}.active`]: true });
+                                alert('友達追加しました！');
                                 startChat(friendId, friendData.name);
                             };
                         }
                         
+                        // お互いが承認済みの時
                         if (myData.active === true && friendData.active === true) {
                             hasNotice = true;
                             reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} と友達です</p>`;
@@ -171,12 +161,47 @@
                 });
 
                 if (!hasNotice) {
-                    reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px; margin:10px 0;'>まだ通知はありません。友達にQRを読んでもらってね！</p>";
+                    reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>まだ通知はありません。上の入力欄かQRコードを使って友達を追加してね！</p>";
                 }
             });
         });
 
-        // 🌟 メッセージを描画する専用の処理
+        // 🌟 友達追加シグナルをデータベースに送る共通関数
+        async function requestFriend(targetId, targetName) {
+            const matchKey = [myId, targetId].sort().join("_");
+            await setDoc(doc(db, "friends_match", matchKey), {
+                [myId]: { name: myName, active: true },
+                [targetId]: { name: targetName, active: false },
+                lastUpdated: new Date()
+            }, { merge: true });
+            alert(`「${targetName}」さんに接続リクエストを送りました！トーク画面を確認してください。`);
+        }
+
+        // 🌟 ボタンを押して手動でコード入力した時の処理
+        async function connectByCode() {
+            const targetId = document.getElementById('friend-code-input').value.trim();
+            if (!targetId) {
+                alert('友達のユーザーコードを入力してください。');
+                return;
+            }
+            if (targetId === myId) {
+                alert('自分のコードは入力できません。');
+                return;
+            }
+
+            // 相手が本当に存在するか一応データベースをチェック
+            const userDoc = await getDoc(doc(db, "users", targetId));
+            if (!userDoc.exists()) {
+                alert('入力されたユーザーコードが見つかりませんでした。大文字小文字などを確認してください。');
+                return;
+            }
+
+            const targetName = userDoc.data().name || "友達";
+            await requestFriend(targetId, targetName);
+            document.getElementById('friend-code-input').value = ""; // 入力欄をクリア
+        }
+
+        // メッセージ表示処理
         function renderMessages(snapshot, friendName) {
             const chatBox = document.getElementById('chat-box');
             chatBox.innerHTML = "";
@@ -202,44 +227,28 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // 🌟 2秒に1回、強制的に手動更新をかけるリアルタイム処理
-        function setupTwoSecondInterval(roomId, friendName) {
-            // もしすでに古いタイマーが動いていたら一回消す（重複防止）
-            if (updateIntervalId) clearInterval(updateIntervalId);
-
-            // 2000ミリ秒（2秒）に1回の定期実行処理をスタート！
-            updateIntervalId = setInterval(async () => {
-                if (!activeFriendId) return; // 友達がいなければスキップ
-                
-                const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
-                try {
-                    // 最新データを手動で1発ガツンと取得して画面を上書きする
-                    const snapshot = await getDocs(q);
-                    renderMessages(snapshot, friendName);
-                    console.log("【システム】2秒ごとの強制更新が正常に行われました。");
-                } catch (error) {
-                    console.error("定期更新エラー:", error);
-                }
-            }, 2000);
-        }
-
-        // トークルーム同期開始
+        // トークルームの開始と2秒毎のリアルタイム強制更新
         function startChat(friendId, friendName) {
+            if (activeFriendId === friendId) return;
             activeFriendId = friendId;
-            activeFriendName = friendName;
             document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName}`;
             const roomId = [myId, friendId].sort().join("_");
 
-            // 基本機能としてのリアルタイムリスナー
             const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
-            onSnapshot(q, (snapshot) => {
-                renderMessages(snapshot, friendName);
-            });
+            
+            // 初回＆通常イベントの同期
+            onSnapshot(q, (snapshot) => { renderMessages(snapshot, friendName); });
 
-            // 🔥 追加機能：2秒に1回、リアルタイムに強制リフレッシュをかけるタイマーを起動！
-            setupTwoSecondInterval(roomId, friendName);
+            // 2秒毎のリアルタイム定期更新
+            if (updateIntervalId) clearInterval(updateIntervalId);
+            updateIntervalId = setInterval(async () => {
+                if (!activeFriendId) return;
+                const snapshot = await getDocs(q);
+                renderMessages(snapshot, friendName);
+            }, 2000);
         }
 
+        // メッセージ送信
         async function sendMsg() {
             const input = document.getElementById('msg-input');
             const text = input.value.trim();
@@ -254,6 +263,8 @@
             input.value = '';
         }
 
+        // グローバルにバインド
+        window.connectByCode = connectByCode;
         window.sendMsg = sendMsg;
     </script>
 </head>
@@ -278,18 +289,20 @@
 
     <div id="friends" class="content">
         <h3>マイプロフィール</h3>
-        <div class="profile-box" id="my-name-display">ユーザー名取得中...</div>
+        <div class="profile-box" id="my-name-display" style="white-space: pre-line;">読み込み中...</div>
 
-        <h3>① あなたのQRコード</h3>
+        <h3>① ユーザーコードで友達追加</h3>
+        <div class="code-input-group">
+            <input type="text" id="friend-code-input" placeholder="友達のコード（例: CODE_XXXXX）を入力">
+            <button class="btn-connect" onclick="connectByCode()">追加</button>
+        </div>
+
+        <h3>② QRコードで友達追加</h3>
         <div class="qr-area">
             <img id="qrcode-img" src="" alt="QRコード">
         </div>
         
-        <h3>② 友達のQRコードを読み取る</h3>
-        <button class="btn-action" onclick="startCamera()">📷 スキャンカメラを起動</button>
-        <div id="reader"></div>
-
-        <hr style="margin: 24px 0; border: 0; border-top: 1px solid #eee;">
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
         <h3>届いた通知・友達状態</h3>
         <div id="notifications">
@@ -298,9 +311,8 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
-
 <script>
+    // タブ切り替え制御
     function switchTab(tabId, title) {
         document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
@@ -311,22 +323,6 @@
         else { tabs[1].classList.add('active'); }
         
         document.getElementById('page-title').innerText = title;
-    }
-
-    function startCamera() {
-        const html5QrcodeScanner = new Html5Qrcode("reader");
-        html5QrcodeScanner.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 220, height: 220 } },
-            (decodedText, decodedResult) => {
-                html5QrcodeScanner.stop().then(() => {
-                    window.location.href = decodedText;
-                });
-            },
-            (errorMessage) => { }
-        ).catch((err) => {
-            alert("カメラの起動に失敗しました。ブラウザのカメラ権限を許可してね！");
-        });
     }
 </script>
 
