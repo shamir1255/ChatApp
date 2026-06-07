@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本格派 LINE風リアルタイムChat</title>
+    <title>本格派 LINE風リアルタイムChat (P2P高速版)</title>
     <style>
         :root {
             --line-bg: #7494c0;
@@ -30,7 +30,7 @@
         /* チャット画面 */
         #chat { padding: 0; }
         .chat-room-info { background: rgba(0,0,0,0.15); color: white; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 500; }
-        .sync-status { background: rgba(0, 0, 0, 0.3); color: #25d366; text-align: center; padding: 4px; font-size: 11px; font-weight: bold; }
+        .sync-status { background: rgba(0, 0, 0, 0.3); color: #ffc107; text-align: center; padding: 4px; font-size: 11px; font-weight: bold; }
         .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; box-sizing: border-box; }
         
         /* メッセージ吹き出し */
@@ -48,7 +48,7 @@
         .input-area input:focus { border-color: var(--line-green); }
         .input-area button { border: none; background: var(--line-green); color: white; padding: 10px 18px; border-radius: 22px; margin-left: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
         
-        /* 友達追加画面 */
+        /* 友達追加（接続）画面 */
         #friends { background: #ffffff; padding: 24px; }
         h3 { font-size: 16px; color: var(--line-dark); border-left: 4px solid var(--line-green); padding-left: 8px; margin-top: 0; margin-bottom: 12px; }
         .profile-box { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; border: 1px solid #eee; }
@@ -66,16 +66,11 @@
         /* カメラスキャン領域 */
         .btn-camera { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 24px; }
         #reader { width: 100%; max-width: 300px; margin: 10px auto; border-radius: 8px; overflow: hidden; }
-
-        /* 通知・友達状態カード */
-        .notice-card { background: #fff3cd; padding: 16px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-        .notice-card p { margin: 0 0 12px 0; font-size: 14px; color: #664d03; }
-        .btn-accept { background: var(--line-green); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; }
-        #notifications { min-height: 40px; }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -84,12 +79,12 @@
     
     <div class="tab-menu">
         <div class="tab active" onclick="switchTab('chat', 'トーク')">トーク</div>
-        <div class="tab" onclick="switchTab('friends', '友達追加')">友達追加</div>
+        <div class="tab" onclick="switchTab('friends', '接続設定')">接続設定</div>
     </div>
 
     <div id="chat" class="content active">
         <div class="chat-room-info" id="chat-with-name">まだ誰とも繋がっていません</div>
-        <div class="sync-status" id="sync-status">📡 通信待機中...</div>
+        <div class="sync-status" id="sync-status">❌ 未接続 (相手の5桁入力かQR待ち)</div>
         <div class="chat-box" id="chat-box"></div>
         <div class="input-area">
             <input type="text" id="msg-input" placeholder="メッセージを入力..." onkeypress="if(event.key==='Enter') sendMsg()">
@@ -98,98 +93,50 @@
     </div>
 
     <div id="friends" class="content">
-        <h3>マイプロフィール</h3>
+        <h3>あなたの情報</h3>
         <div class="profile-box" id="my-name-display" style="white-space: pre-line;">ログイン中...</div>
 
-        <h3>① 5桁数字コードで友達追加</h3>
+        <h3>① 5桁の部屋番号で接続</h3>
+        <p style="font-size: 12px; color: #666; margin: -5px 0 10px 0;">お互いに同じ5桁の数字を入力して追加を押してね！</p>
         <div class="code-input-group">
-            <input type="text" id="friend-code-input" placeholder="5桁の数字（例: 12345）" maxlength="5">
-            <button class="btn-connect" onclick="connectByCode()">追加</button>
+            <input type="text" id="friend-code-input" placeholder="共通の5桁数字（例: 77777）" maxlength="5">
+            <button class="btn-connect" onclick="connectByCode()">接続する</button>
         </div>
 
-        <h3>② QRコードで友達追加</h3>
+        <h3>② QRコードで一発接続</h3>
         <button class="btn-camera" onclick="startCameraScan()">📷 相手のQRコードをスキャンする</button>
         <div id="reader"></div>
         
         <div class="qr-area">
             <div id="qrcode"></div>
-            <p style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">あなたのQRコード</p>
+            <p style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">あなたの接続QRコード</p>
         </div>
-        
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-        
-        <h3>届いた通知・友達状態</h3>
-        <div id="notifications"></div>
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyCdkgEhdI9dmBAyMfsRJWI5GamHDW_NknQ",
-        authDomain: "chatapp-bbf6e.firebaseapp.com",
-        projectId: "chatapp-bbf6e",
-        storageBucket: "chatapp-bbf6e.firebasestorage.app",
-        messagingSenderId: "821508067673",
-        appId: "1:821508067673:web:f2bee03404624e99fefc48",
-        measurementId: "G-J4CRQJKGTY"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // 🔒 ログイン情報と自分のIDをスマホのローカル記憶域にガチ保存
-    let myId = localStorage.getItem("my_chat_id");
-    let myName = localStorage.getItem("my_chat_name");
+<script>
+    // 🔒 ログインと部屋番号のローカル永続保存
+    let myRoomId = localStorage.getItem("p2p_room_id");
+    let myName = localStorage.getItem("my_chat_name") || "ユーザー_" + Math.random().toString(36).substring(2, 5);
     
-    // 🌟 5桁の数字コードに完全限定化
-    if (!myId || myId.startsWith("code_") || isNaN(myId) || myId.length !== 5) {
-        myId = Math.floor(10000 + Math.random() * 90000).toString(); // 必ず10000〜99999の5桁数字
-        myName = "ユーザー_" + Math.random().toString(36).substring(2, 5);
-        localStorage.setItem("my_chat_id", myId);
+    if (!myRoomId || myRoomId.length !== 5 || isNaN(myRoomId)) {
+        myRoomId = Math.floor(10000 + Math.random() * 90000).toString(); // ランダムな5桁
+        localStorage.setItem("p2p_room_id", myRoomId);
         localStorage.setItem("my_chat_name", myName);
     }
 
-    let activeFriendId = localStorage.getItem("active_friend_id") || null;
-    let activeFriendName = localStorage.getItem("active_friend_name") || "";
-    let updateIntervalId = null;
+    let peer = null;
+    let conn = null;
+    let chatHistory = [];
     let html5QrcodeScanner = null;
 
-    // 🔒 チャット履歴をローカルから超高速復元
-    function loadLocalMessages(roomId) {
-        const localData = localStorage.getItem(`chat_history_${roomId}`);
-        if (localData) {
-            renderMessagesRaw(JSON.parse(localData), activeFriendName);
-        }
+    // 起動時にローカルのチャット履歴があれば表示
+    const savedLogs = localStorage.getItem(`p2p_history_${myRoomId}`);
+    if (savedLogs) {
+        chatHistory = JSON.parse(savedLogs);
     }
 
-    function loadLocalFriends() {
-        const friendId = localStorage.getItem("active_friend_id");
-        const friendName = localStorage.getItem("active_friend_name");
-        const reqList = document.getElementById('notifications');
-        if (friendId && friendName) {
-            reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendName} (${friendId}) と友達です</p>`;
-        } else {
-            reqList.innerHTML = "<p style='color:#bbb; text-align:center; font-size:14px;'>通知はありません。5桁数字かQRコードで追加してね！</p>";
-        }
-    }
-
-    // 🌟 スマホ内部だけで一瞬でQRコードを強制自社生成
-    function generateQR() {
-        const currentUrl = window.location.href.split('?')[0];
-        const inviteUrl = `${currentUrl}?add=${myId}&name=${encodeURIComponent(myName)}`;
-        document.getElementById("qrcode").innerHTML = "";
-        new QRCode(document.getElementById("qrcode"), {
-            text: inviteUrl,
-            width: 160,
-            height: 160,
-            correctLevel : QRCode.CorrectLevel.H
-        });
-    }
-
-    // ボタン関数をwindowにバインドして全滅フリーズを完全防止
+    // タブ切り替え
     window.switchTab = function(tabId, title) {
         document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
@@ -202,69 +149,161 @@
         document.getElementById('page-title').innerText = title;
     };
 
-    // 🌟 カメラを起動してリアルタイムにQRコードを読み取る機能
+    // QRコードのその場自社生成
+    function generateQR(roomId) {
+        const currentUrl = window.location.href.split('?')[0];
+        const inviteUrl = `${currentUrl}?room=${roomId}`;
+        document.getElementById("qrcode").innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), {
+            text: inviteUrl,
+            width: 160,
+            height: 160,
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+
+    // 🌟 P2Pネットワークエンジンの初期化
+    function initP2P(targetRoomId) {
+        if (peer) peer.destroy();
+
+        // 部屋番号の頭文字をつけて一意のP2Pアドレスを作成
+        const myPeerId = "line_p2p_room_" + targetRoomId;
+        
+        // 無料の公式公開シグナリングサーバーへ接続
+        peer = new Peer(myPeerId);
+
+        peer.on('open', (id) => {
+            console.log('P2P待機開始 ID:', id);
+            document.getElementById('sync-status').innerText = `📡 待機中... 誰かが部屋 [${targetRoomId}] に入るのを待っています`;
+            document.getElementById('sync-status').style.color = "#ffc107";
+        });
+
+        // 相手から接続が飛んできた時の処理（受信）
+        peer.on('connection', (connection) => {
+            setupConnection(connection);
+        });
+
+        peer.on('error', (err) => {
+            console.log("Peerエラー:", err.type);
+            // 既に部屋が作られている場合は、自分から相手に接続しにいく
+            if (err.type === 'unavailable-id') {
+                connectToPeer(targetRoomId);
+            }
+        });
+    }
+
+    // 自分から相手へ接続をかける処理（送信）
+    function connectToPeer(targetRoomId) {
+        // 自分は別の一時的なIDで立ち上げて、相手の部屋IDにアタックする
+        const tempId = "line_p2p_guest_" + Math.floor(Math.random() * 10000);
+        peer = new Peer(tempId);
+        
+        peer.on('open', () => {
+            const destPeerId = "line_p2p_room_" + targetRoomId;
+            const connection = peer.connect(destPeerId);
+            setupConnection(connection);
+        });
+    }
+
+    // 繋がったパイプラインの管理とイベント処理
+    function setupConnection(connection) {
+        conn = connection;
+
+        conn.on('open', () => {
+            document.getElementById('sync-status').innerText = `🟢 P2P直結成功！通信状態：極めて良好`;
+            document.getElementById('sync-status').style.color = "#25d366";
+            document.getElementById('chat-with-name').innerText = `🟢 トーク中 (部屋番号: ${localStorage.getItem("p2p_room_id")})`;
+            
+            // 接続成功したらチャットタブに自動切り替え
+            switchTab('chat', 'トーク');
+
+            // 繋がった瞬間に過去ログを同期
+            renderMessages();
+        });
+
+        // 🌟 相手からリアルタイムにメッセージが直接届いた瞬間
+        conn.on('data', (data) => {
+            if (data.type === 'msg') {
+                chatHistory.push({ sender: 'friend', text: data.text });
+                saveAndRender();
+            }
+        });
+
+        conn.on('close', () => {
+            document.getElementById('sync-status').innerText = `❌ 切断されました。再度接続してください`;
+            document.getElementById('sync-status').style.color = "#ff3b30";
+        });
+    }
+
+    // 5桁コード手動入力による接続
+    window.connectByCode = function() {
+        const targetId = document.getElementById('friend-code-input').value.trim();
+        if (targetId.length !== 5 || isNaN(targetId)) return alert('5桁の数字を入力してください。');
+        
+        localStorage.setItem("p2p_room_id", targetId);
+        document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${targetId}】`;
+        generateQR(targetId);
+        
+        initP2P(targetId);
+    };
+
+    // カメラによるQRコードスキャン接続
     window.startCameraScan = function() {
-        document.getElementById("reader").innerHTML = ""; // 初期化
+        document.getElementById("reader").innerHTML = "";
         html5QrcodeScanner = new Html5Qrcode("reader");
         html5QrcodeScanner.start(
             { facingMode: "environment" }, 
             { fps: 10, qrbox: { width: 220, height: 220 } },
             (decodedText) => {
                 html5QrcodeScanner.stop().then(() => {
-                    window.location.href = decodedText; // 読み取ったURLに瞬間ジャンプして追加完了
+                    window.location.href = decodedText; // URLジャンプして自動接続
                 });
             },
             () => {}
         ).catch(() => {
-            alert("カメラの起動に失敗しました。ブラウザのカメラ権限をオンにしてください。");
+            alert("カメラ権限をオンにしてください。");
         });
     };
 
-    // 5桁数字コードで手動友達追加
-    window.connectByCode = async function() {
-        const targetId = document.getElementById('friend-code-input').value.trim();
-        if (targetId.length !== 5 || isNaN(targetId)) return alert('5桁の数字コードを正しく入力してください。');
-        if (targetId === myId) return alert('自分のコードは追加できません。');
+    // メッセージ送信
+    window.sendMsg = function() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (text === '') return;
 
-        try {
-            const userDoc = await getDoc(doc(db, "users", targetId));
-            if (!userDoc.exists()) return alert('その5桁コードのユーザーは見つかりません。');
-
-            const targetName = userDoc.data().name || "友達";
-            await requestFriend(targetId, targetName);
-            document.getElementById('friend-code-input').value = "";
-        } catch (e) {
-            alert('接続エラー。もう一度お試しください。');
+        // 相手に直接パケットを送りつける（一瞬で届く）
+        if (conn && conn.open) {
+            conn.send({ type: 'msg', text: text });
         }
+
+        chatHistory.push({ sender: 'me', text: text });
+        saveAndRender();
+        input.value = '';
     };
 
-    async function requestFriend(targetId, targetName) {
-        const matchKey = [myId, targetId].sort().join("_");
-        await setDoc(doc(db, "friends_match", matchKey), {
-            [myId]: { name: myName, active: true },
-            [targetId]: { name: targetName, active: false },
-            lastUpdated: new Date()
-        }, { merge: true });
-        alert(`数字コード「${targetId}」へ申請を送りました！\n相手があなたの5桁コードを入力するか、承認ボタンを押すとチャットが始まります。`);
+    function saveAndRender() {
+        const currentRoom = localStorage.getItem("p2p_room_id");
+        localStorage.setItem(`p2p_history_${currentRoom}`, JSON.stringify(chatHistory));
+        renderMessages();
     }
 
-    function renderMessagesRaw(msgArray, friendName) {
+    function renderMessages() {
         const chatBox = document.getElementById('chat-box');
         chatBox.innerHTML = "";
-        msgArray.forEach((msgData) => {
+        chatHistory.forEach((msg) => {
             const wrapper = document.createElement('div');
-            wrapper.className = msgData.senderId === myId ? "msg-wrapper me" : "msg-wrapper friend";
+            wrapper.className = msg.sender === 'me' ? "msg-wrapper me" : "msg-wrapper friend";
             
-            if(msgData.senderId !== myId) {
+            if(msg.sender !== 'me') {
                 const nameLabel = document.createElement('div');
                 nameLabel.className = "sender-name";
-                nameLabel.innerText = friendName;
+                nameLabel.innerText = "友達";
                 wrapper.appendChild(nameLabel);
             }
             
             const msgEl = document.createElement('div');
-            msgEl.className = msgData.senderId === myId ? "msg me" : "msg friend";
-            msgEl.innerText = msgData.text;
+            msgEl.className = msg.sender === 'me' ? "msg me" : "msg friend";
+            msgEl.innerText = msg.text;
             
             wrapper.appendChild(msgEl);
             chatBox.appendChild(wrapper);
@@ -272,122 +311,26 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function serializeAndSaveMessages(snapshot, roomId, friendName) {
-        const msgArray = [];
-        snapshot.forEach((doc) => { msgArray.push(doc.data()); });
-        localStorage.setItem(`chat_history_${roomId}`, JSON.stringify(msgArray));
-        renderMessagesRaw(msgArray, friendName);
-    }
-
-    // トークルーム同期開始
-    function startChat(friendId, friendName) {
-        activeFriendId = friendId;
-        activeFriendName = friendName;
-        localStorage.setItem("active_friend_id", friendId);
-        localStorage.setItem("active_friend_name", friendName);
-
-        document.getElementById('chat-with-name').innerText = `🟢 トーク中: ${friendName} (${friendId})`;
-        const roomId = [myId, friendId].sort().join("_");
-
-        loadLocalMessages(roomId);
-
-        const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
+    // 初期化ロード
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
         
-        // リアルタイム接続イベント
-        onSnapshot(q, (snapshot) => { 
-            serializeAndSaveMessages(snapshot, roomId, friendName);
-            document.getElementById('sync-status').innerText = `🟢 通信状態: 良好（自動更新中）`;
-            document.getElementById('sync-status').style.color = "#25d366";
-        });
-
-        // 🌟 2秒に1回の「強制手動問い合わせ」と「通信ランプ」の同期化
-        if (updateIntervalId) clearInterval(updateIntervalId);
-        updateIntervalId = setInterval(async () => {
-            if (!activeFriendId) return;
-            const snapshot = await getDocs(q);
-            serializeAndSaveMessages(snapshot, roomId, friendName);
-            
-            // 🌟 リアルタイムに相手と通信が成功している証拠を画面上に刻印する
-            const now = new Date();
-            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
-            document.getElementById('sync-status').innerText = `🟢 通信状態: 良好（${timeStr} 定期同期成功）`;
-            document.getElementById('sync-status').style.color = "#85e29e";
-        }, 2000);
-    }
-
-    window.sendMsg = async function() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        if (text === '' || !activeFriendId) return;
-
-        const roomId = [myId, activeFriendId].sort().join("_");
-        await addDoc(collection(db, "rooms", roomId, "messages"), {
-            senderId: myId,
-            text: text,
-            createdAt: new Date()
-        });
-        input.value = '';
-    };
-
-    // 初期起動ルーチン
-    window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('my-name-display').innerText = `${myName}\n【あなたの5桁コード: ${myId}】`;
-        
-        generateQR();
-        loadLocalFriends();
-
-        if (activeFriendId && activeFriendName) {
-            startChat(activeFriendId, activeFriendName);
-        }
-
-        setDoc(doc(db, "users", myId), { name: myName }, { merge: true }).catch(()=>{});
-
-        // URLパラメータ（QRコード読み取り）での自動追加ルート
+        // URLパラメータ（QRコード読み取り）のチェック
         const urlParams = new URLSearchParams(window.location.search);
-        const addTargetId = urlParams.get('add');
-        const addTargetName = urlParams.get('name');
-        if (addTargetId && addTargetId !== myId) {
-            await requestFriend(addTargetId, addTargetName || "友達");
+        const urlRoomId = urlParams.get('room');
+        
+        if (urlRoomId && urlRoomId.length === 5 && !isNaN(urlRoomId)) {
+            myRoomId = urlRoomId;
+            localStorage.setItem("p2p_room_id", myRoomId);
+            document.getElementById('my-name-display').innerText = `${myName}\n【現在の部屋番号: ${myRoomId}】`;
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
         }
 
-        // マッチングサーバー監視
-        onSnapshot(collection(db, "friends_match"), (snapshot) => {
-            const reqList = document.getElementById('notifications');
-            let hasNotice = false;
-
-            snapshot.forEach((roomDoc) => {
-                const matchKey = roomDoc.id;
-                if (matchKey.includes(myId)) {
-                    const data = roomDoc.data();
-                    const friendId = matchKey.split("_").find(id => id !== myId);
-                    const myData = data[myId];
-                    const friendData = data[friendId];
-
-                    if (!friendData || !myData) return;
-
-                    if (friendData.active === true && myData.active === false) {
-                        hasNotice = true;
-                        reqList.innerHTML = `
-                            <div class="notice-card">
-                                <p>👥 <strong>${friendData.name}</strong> (${friendId}) から追加されました！</p>
-                                <button class="btn-accept" id="accept-btn-v3">承認してトークを始める</button>
-                            </div>`;
-
-                        document.getElementById('accept-btn-v3').onclick = async () => {
-                            await updateDoc(doc(db, "friends_match", matchKey), { [`${myId}.active`]: true });
-                            startChat(friendId, friendData.name);
-                        };
-                    }
-                    
-                    if (myData.active === true && friendData.active === true) {
-                        hasNotice = true;
-                        reqList.innerHTML = `<p style="color:#1e2a38; text-align:center; font-weight:bold; margin:10px 0;">✅ ${friendData.name} (${friendId}) と友達です</p>`;
-                        startChat(friendId, friendData.name);
-                    }
-                }
-            });
-        });
+        generateQR(myRoomId);
+        renderMessages();
+        
+        // P2P通信のエンジンを始動
+        initP2P(myRoomId);
     });
 </script>
 
