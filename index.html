@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LINE風P2P (写真・名前変更版)</title>
+    <title>LINE風P2P (写真バグ修正版)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #7494c0; --green: #25d366; --dark: #1e2a38; }
@@ -30,7 +30,7 @@
         .msg { padding: 6px 10px; border-radius: 12px; max-width: 70%; word-break: break-all; }
         .msg.me { background: #85e29e; border-top-right-radius: 2px; }
         .msg.friend { background: #fff; border-top-left-radius: 2px; }
-        .msg img { max-width: 100%; border-radius: 8px; display: block; margin: 2px 0; }
+        .msg img { max-width: 100%; min-width: 80px; min-height: 50px; border-radius: 8px; display: block; margin: 2px 0; background: #eee; }
         .status { font-size: 9px; color: rgba(255,255,255,0.7); margin-right: 4px; text-align: right; }
         .left-back-btn { position: absolute; left: 0; top: 40%; width: 34px; height: 50px; background: rgba(30,42,56,0.85); color: white; border: none; border-radius: 0 8px 8px 0; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 40; }
         .compact-input-cluster { position: absolute; right: 12px; top: 55%; display: flex; flex-direction: column; gap: 5px; z-index: 30; }
@@ -85,7 +85,6 @@
     let db = JSON.parse(localStorage.getItem("db3")) || {};
     let peer = null, conns = {}, activeCode = null, cooling = false;
 
-    // ⚡ 20MBの事前読み込み演出
     function preload(cb) {
         let size = 0, total = 20;
         let i = setInterval(() => {
@@ -114,7 +113,7 @@
         if (!db[code]) db[code] = { code: code, name: "友達(" + code + ")", history: [], unread: 0 };
         c.on('open', () => {
             conns[code] = c;
-            c.send({ type: 'sync-name', name: myName }); // 接続時に名前を通知
+            c.send({ type: 'sync-name', name: myName });
             flushBox(code); renderList();
         });
         c.on('data', d => {
@@ -197,7 +196,7 @@
         input.value = '';
     }
 
-    // 📷 写真送信処理（超軽量圧縮化）
+    // 📷 写真送信処理【バグ修正：超・超軽量化ビルド】
     function sendImage(input) {
         if (!input.files || !input.files[0] || !activeCode) return;
         let reader = new FileReader();
@@ -206,13 +205,17 @@
             img.src = e.target.result;
             img.onload = function () {
                 let canvas = document.createElement('canvas');
-                let max = 300; // 軽量化のため最大幅300pxに縮小
+                let max = 120; // ⚡ 電波不良対策：データ千切れを防ぐため120pxに限界縮小！
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > max) { h *= max / w; w = max; } }
                 else { if (h > max) { w *= max / h; h = max; } }
                 canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                executeSend(canvas.toDataURL('image/jpeg', 0.5), true); // 画質50%圧縮
+                let ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                
+                // ⚡ 画質を20%まで落とし、パケット詰まりを完全に防止
+                let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.2); 
+                executeSend(compressedDataUrl, true);
             };
         };
         reader.readAsDataURL(input.files[0]);
@@ -222,8 +225,9 @@
     function executeSend(payload, isImg) {
         cooling = true; document.getElementById('send-btn').disabled = true;
         let id = Math.random().toString(36).substring(2,9);
-        if(conns[activeCode]?.open) conns[activeCode].send({type:'msg', id:id, text:payload, isImg:isImg});
-        else {
+        if(conns[activeCode]?.open) {
+            conns[activeCode].send({type:'msg', id:id, text:payload, isImg:isImg});
+        } else {
             let mb = JSON.parse(localStorage.getItem("mb3")) || [];
             mb.push({to:activeCode, id:id, text:payload, isImg:isImg}); localStorage.setItem("mb3", JSON.stringify(mb));
         }
@@ -241,7 +245,12 @@
                 let st = document.createElement('div'); st.className = "status"; st.innerText = m.read ? "既読" : "未読"; row.appendChild(st);
             }
             let el = document.createElement('div'); el.className = `msg ${m.sender==='me'?'me':'friend'}`;
-            if(m.isImg) { el.innerHTML = `<img src="${m.text}">`; } else { el.innerText = m.text; }
+            if(m.isImg) {
+                // 読み込み完了前のカクつき防止にスタイルを最適化
+                el.innerHTML = `<img src="${m.text}" loading="lazy" onload="document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;">`;
+            } else {
+                el.innerText = m.text;
+            }
             row.appendChild(el); box.appendChild(row);
         });
         box.scrollTop = box.scrollHeight;
