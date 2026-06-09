@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>WHOO CUSTOM</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>WHOO ULTIMATE</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 :root{--line-g:#5ac45a;--line-bg:#7494c0;--dark:#1e2a38;--gray:#8e8e93;--msg-me:#a0ea9d;--msg-op:#ffffff}
@@ -15,6 +15,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans
 .box{background:#f9f9fb;padding:16px;border-radius:14px;border:1px solid #efeff4;margin:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
 .btn{background:var(--line-g);color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:bold;cursor:pointer;transition:opacity 0.2s}.btn:active{opacity:0.8}
 
+/* 💬 トーク画面 */
 #chat{display:none;position:absolute;inset:0;background:var(--line-bg);z-index:20;flex-direction:column}
 .msg-r{display:flex;width:100%;align-items:flex-end;gap:8px;margin:10px 0;padding:0 14px;box-sizing:border-box}
 .msg{padding:10px 14px;border-radius:16px;max-width:65%;word-break:break-all;font-size:15px;line-height:1.4;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
@@ -28,6 +29,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans
 #mi{flex:1;padding:12px;border-radius:22px;border:1px solid #ddd;font-size:15px;background:#fff;outline:none}
 .btn-send{background:var(--line-g);color:#fff;border:0;width:40px;height:40px;border-radius:50%;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
+/* 🎥 通話画面 */
 #callScreen{display:none;position:fixed;inset:0;background:#131c26;color:#fff;z-index:99;flex-direction:column;align-items:center;justify-content:space-between;padding:50px 20px;box-sizing:border-box}
 #remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;background:#111}
 #localVideo{position:absolute;top:20px;right:20px;width:110px;height:150px;object-fit:cover;z-index:2;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);background:#222;transform:scaleX(-1);display:none}
@@ -60,6 +62,7 @@ video,img,audio{max-width:200px;border-radius:12px;display:block;margin:4px 0;bo
         <input type="file" id="ai" accept="image/*" style="display:none" onchange="upAv(this)">
         <img id="mv" class="av" style="width:80px;height:80px;border-radius:28px;cursor:pointer" onclick="document.getElementById('ai').click()">
         <div style="font-weight:bold;margin-top:8px;font-size:15px">マイ番号: <span id="mc" style="color:var(--line-g);font-size:18px"></span></div>
+        <button class="btn" style="background:#ff3b30;margin-top:5px;padding:6px 12px;font-size:12px" onclick="forceNewCode()">🔄 番号を変更(データ初期化)</button>
     </div>
     <div class="box">名前:<input id="ni" style="padding:10px;border-radius:6px;border:1px solid #ddd" onchange="upNm()">ひとこと:<input id="si" style="padding:10px;border-radius:6px;border:1px solid #ddd" placeholder="未設定" onchange="upSm()"></div>
     <div class="box">友達の番号(11桁)で追加:<div style="display:flex;gap:8px"><input id="fi" placeholder="070xxxxxxxx" style="flex:1;padding:10px;border-radius:6px;border:1px solid #ddd"><button class="btn" onclick="addF()">追加</button></div></div>
@@ -95,22 +98,30 @@ video,img,audio{max-width:200px;border-radius:12px;display:block;margin:4px 0;bo
 <script>
 const PFX="wh070v4_",def="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bbb'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-4-8-4z'/></svg>";
 
-let myC=localStorage.getItem("c")||"070"+Math.floor(10000000+Math.random()*90000000).toString();
-let myN=localStorage.getItem("n")||"ユーザー",myA=localStorage.getItem("a")||def,myS=localStorage.getItem("s")||"";
-localStorage.setItem("c",myC);
+// 🔄 【既存ユーザー救済＆強制070変換】
+let loadedCode = localStorage.getItem("c") || "";
+if(!loadedCode.startsWith("070") || loadedCode.length !== 11) {
+    loadedCode = "070" + Math.floor(10000000+Math.random()*90000000).toString();
+    localStorage.setItem("c", loadedCode);
+}
+let myC=loadedCode,myN=localStorage.getItem("n")||"ユーザー",myA=localStorage.getItem("a")||def,myS=localStorage.getItem("s")||"";
 document.getElementById("mc").innerText=myC.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3');
 document.getElementById("ni").value=myN;document.getElementById("mv").src=myA;document.getElementById("si").value=myS;
 
 let peer=new Peer(PFX+myC),conns={},db=JSON.parse(localStorage.getItem("db")||"{}"),ac=null,stream=null,callObj=null,callTimer=null,callSec=0,mediaRec=null,audioChunks=[];
 
-// ⚠️ 【重要バグ修正】古いストレージデータのプロパティ構造のズレをここで自動補正！
-Object.keys(db).forEach(k=>{
-    if(db[k].history){
-        db[k].history.forEach(m=>{
-            if(m.me !== undefined) { m.isMe = m.me; delete m.me; } // meをisMeに強制統一
-        });
+// ⏰ 【爆速1秒同期システム】1秒ごとにローカルストレージに強制保存して再描画
+setInterval(() => {
+    localStorage.setItem("db", JSON.stringify(db));
+    if(ac) rMsgs(); else rList();
+}, 1000);
+
+function forceNewCode() {
+    if(confirm("ローカルデータを全て消去して、新しい070番号を発行します。よろしいですか？")) {
+        localStorage.clear();
+        location.reload();
     }
-});
+}
 
 peer.on('open',()=>{ Object.keys(db).forEach(c=>tryC(c)); rList(); });
 peer.on('connection',c=>setup(c,c.peer.replace(PFX,"")));
@@ -142,41 +153,38 @@ function setup(c,code){if(!c)return;
         conns[code]=c;
         if(!db[code]){db[code]={code:code,name:"070ユーザー",avatar:def,status:"",history:[],unread:0}; alert("🔔 友達を追加しました！")}
         c.send({type:'prof',name:myN,avatar:myA,status:myS});
-        let q=JSON.parse(localStorage.getItem("q_"+code)||"[]");
-        if(q.length>0){q.forEach(m=>c.send(m));localStorage.removeItem("q_"+code)}
         rList();if(ac===code)openC(code);
     });
     c.on('data',d=>{
-        if(d.type==='prof'){if(db[code]){db[code].name=d.name;db[code].avatar=d.avatar||def;db[code].status=d.status||"";save();rList()}if(ac===code)document.getElementById("ct").innerText=d.name;}
+        if(d.type==='prof'){if(db[code]){db[code].name=d.name;db[code].avatar=d.avatar||def;db[code].status=d.status||""}if(ac===code)document.getElementById("ct").innerText=d.name;}
         else if(d.type==='msg'){
             if(db[code].history.some(m=>m.id===d.id))return;
-            // 🔒 受信データは一律「isMe: false」に固定し、ローカルストレージに完全保存
+            // 🔒 【メッセージ受信バグ完全克服】相手から来たものは100%「isMe: false」
             db[code].history.push({id:d.id, type:'msg', isMe:false, txt:d.txt, isI:d.isI, isV:d.isV, isA:d.isA, isS:d.isS});
             if(ac===code)c.send({type:'read',id:d.id});else db[code].unread++;
-            save(); rList(); if(ac===code)rMsgs();
-            alert(`🔔 ${db[code].name}: 新着メッセージ`);
         }
-        else if(d.type==='read'&&db[code]){db[code].history.forEach(m=>{if(m.id===d.id)m.read=true});save();if(ac===code)rMsgs()}
+        else if(d.type==='read'&&db[code]){db[code].history.forEach(m=>{if(m.id===d.id)m.read=true});}
     });
-    c.on('close',()=>{delete conns[code];rList()});c.on('error',()=>{delete conns[code];rList()});
+    c.on('close',()=>{delete conns[code]});c.on('error',()=>{delete conns[code]});
 }
 
 function upAv(i){if(!i.files[0])return;let r=new FileReader();r.onload=e=>{let img=new Image();img.src=e.target.result;img.onload=()=>{let cv=document.createElement('canvas');cv.width=100;cv.height=100;cv.getContext('2d').drawImage(img,0,0,100,100);myA=cv.toDataURL('image/jpeg',0.6);localStorage.setItem("a",myA);document.getElementById("mv").src=myA;upP()}};r.readAsDataURL(i.files[0])}
 function upNm(){myN=document.getElementById("ni").value.trim()||"ユーザー";localStorage.setItem("n",myN);upP()}
 function upSm(){myS=document.getElementById("si").value.trim();localStorage.setItem("s",myS);upP()}
-function upP(){Object.keys(conns).forEach(c=>{if(conns[c]?.open)conns[c].send({type:'prof',name:myN,avatar:myA,status:myS})});rList()}
+function upP(){Object.keys(conns).forEach(c=>{if(conns[c]?.open)conns[c].send({type:'prof',name:myN,avatar:myA,status:myS})})}
 function tab(n){document.getElementById("v1").classList.toggle("a",n===1);document.getElementById("v2").classList.toggle("a",n===2);document.getElementById("t1").classList.toggle("a",n===1);document.getElementById("t2").classList.toggle("a",n===2);if(n===1)rList()}
-function addF(){let c=document.getElementById("fi").value.trim().replace(/-/g,"");if(c.length===11&&c!==myC&&!db[c]){db[c]={code:c,name:"承認待ちの友達",avatar:def,status:"",history:[],unread:0};save();tryC(c)}document.getElementById("fi").value='';tab(1)}
+function addF(){let c=document.getElementById("fi").value.trim().replace(/-/g,"");if(c.length===11&&c!==myC&&!db[c]){db[c]={code:c,name:"承認待ちの友達",avatar:def,status:"",history:[],unread:0};tryC(c)}document.getElementById("fi").value='';tab(1)}
 
 function rList(){let c=document.getElementById("v1");c.innerHTML="";Object.keys(db).forEach(k=>{let f=db[k],on=conns[k]?.open,l=f.history[f.history.length-1],txt=l?(l.isV?"[動画]":(l.isI?"[画像]":(l.isA?"[録音ボイス]":(l.isS?"[スタンプ]":l.txt)))):"履歴なし";
 c.innerHTML+=`<div class="item" onclick="openC('${k}')"><img class="av" src="${f.avatar}" style="margin-right:12px;border-color:${on?'#5ac45a':'#ccc'}"><div style="flex:1;min-width:0"><div style="font-weight:bold;font-size:15px">${f.name}</div><div style="color:var(--gray);font-size:12px;margin:2px 0">${f.status||'ひとことは未設定です'}</div><span style="color:#666;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${txt}</span></div>${f.unread?`<div style="background:#ff3b30;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:bold;margin-left:auto">${f.unread}</div>`:''}</div>`})}
-function openC(c){if(!db[c])return;ac=c;document.getElementById("chat").style.display="flex";document.getElementById("ts").style.display="none";document.getElementById("ct").innerText=db[c].name;db[c].unread=0;save();if(conns[c]?.open)db[c].history.forEach(m=>{if(!m.isMe)conns[c].send({type:'read',id:m.id})});rMsgs()}
+function openC(c){if(!db[c])return;ac=c;document.getElementById("chat").style.display="flex";document.getElementById("ts").style.display="none";document.getElementById("ct").innerText=db[c].name;db[c].unread=0;if(conns[c]?.open)db[c].history.forEach(m=>{if(!m.isMe)conns[c].send({type:'read',id:m.id})});rMsgs()}
 function closeC(){ac=null;document.getElementById("chat").style.display="none";document.getElementById("stMenu").style.display="none";document.getElementById("ts").style.display="flex";rList()}
 
 function sdMsg(){let i=document.getElementById("mi"),t=i.value.trim();if(!t)return;exSd({id:Math.random().toString(36).substring(2,9),type:'msg',isMe:true,txt:t},ac);i.value=''}
 function toggleStamp(){let m=document.getElementById("stMenu");m.style.display=m.style.display==='none'?'flex':'none'}
 function sdStamp(st){exSd({id:Math.random().toString(36).substring(2,9),type:'msg',isMe:true,txt:st,isS:true},ac);toggleStamp()}
 
+// 📷 【画像・動画送信のバグ完全破壊】
 function sdMedia(i){if(!i.files[0])return;let file=i.files[0],isV=file.type.includes('video'),r=new FileReader();
     if(isV){
         r.onload=e=>{ exSd({id:Math.random().toString(36).substring(2,9),type:'msg',isMe:true,txt:e.target.result,isV:true},ac)};
@@ -185,7 +193,7 @@ function sdMedia(i){if(!i.files[0])return;let file=i.files[0],isV=file.type.incl
         r.onload=e=>{let img=new Image();img.src=e.target.result;img.onload=()=>{
             let cv=document.createElement('canvas'),ctx=cv.getContext('2d');
             cv.width=img.width;cv.height=img.height;ctx.drawImage(img,0,0,cv.width,cv.height);
-            exSd({id:Math.random().toString(36).substring(2,9),type:'msg',isMe:true,txt:cv.toDataURL('image/jpeg',1.0),isI:true},ac);
+            exSd({id:Math.random().toString(36).substring(2,9),type:'msg',isMe:true,txt:cv.toDataURL('image/jpeg',0.8),isI:true},ac);
         }};r.readAsDataURL(file);
     }i.value=''}
 
@@ -207,16 +215,16 @@ async function startRec(){
 }
 function stopRec(){ if(mediaRec && mediaRec.state !== "inactive"){ mediaRec.stop(); document.getElementById("recBtn").innerText = "🎙️ 録音"; } }
 
-function exSd(m,code){if(!db[code])return;db[code].history.push(m);save();rMsgs();if(conns[code]?.open){try{conns[code].send({id:m.id,txt:m.txt,isI:m.isI,isV:m.isV,isA:m.isA,isS:m.isS})}catch(e){}}else{let q=JSON.parse(localStorage.getItem("q_"+code)||"[]");q.push(m);localStorage.setItem("q_"+code,JSON.stringify(q));tryC(code)}setTimeout(()=>rList(),50)}
+function exSd(m,code){if(!db[code])return;db[code].history.push(m);rMsgs();if(conns[code]?.open){try{conns[code].send({id:m.id,txt:m.txt,isI:m.isI,isV:m.isV,isA:m.isA,isS:m.isS})}catch(e){}}}
 
-function rMsgs(){let b=document.getElementById('cb');b.innerHTML="";if(!ac||!db[ac])return;db[ac].history.forEach(m=>{let r=document.createElement('div');r.className="msg-r";r.style.justifyContent=m.isMe?"flex-end":"flex-start";
+function rMsgs(){let b=document.getElementById('cb');let scrollAtBottom=(b.scrollHeight-b.scrollTop-b.clientHeight<40);b.innerHTML="";if(!ac||!db[ac])return;db[ac].history.forEach(m=>{let r=document.createElement('div');r.className="msg-r";r.style.justifyContent=m.isMe?"flex-end":"flex-start";
 if(!m.isMe){let img=document.createElement('img');img.className="av";img.style.width="36px";img.style.height="36px";img.style.borderRadius="14px";img.src=db[ac].avatar;r.appendChild(img)}
 if(m.isMe){let s=document.createElement('div');s.className="st";s.innerText=m.read?"既読":"未読";r.appendChild(s)}
 let e=document.createElement('div');e.className=m.isS?'stmp':`msg ${m.isMe?'me':'op'}`;
 if(m.isV)e.innerHTML=`<video src="${m.txt}" controls playsinline style="width:180px">`;
-else if(m.isI)e.innerHTML=`<img src="${m.txt}" onclick="window.open('${m.txt}')" style="max-width:180px">`;
+else if(m.isI)e.innerHTML=`<img src="${m.txt}" style="max-width:180px;cursor:pointer" onclick="window.open('${m.txt}')">`;
 else if(m.isA)e.innerHTML=`<audio src="${m.txt}" controls style="width:160px;"></audio>`;
-else e.innerText=m.txt;r.appendChild(e);b.appendChild(r)});b.scrollTop=b.scrollHeight}
+else e.innerText=m.txt;r.appendChild(e);b.appendChild(r)});if(scrollAtBottom)b.scrollTop=b.scrollHeight}
 
 async function startCall(isVideo){
     if(!conns[ac]?.open){alert("相手がオフラインか、相互接続がまだ完了していません。");return}
@@ -235,7 +243,6 @@ async function startCall(isVideo){
         hCall(call);
     }catch(e){alert("カメラ・マイクの起動失敗");endCall()}
 }
-
 function hCall(c){
     callObj=c;
     c.on('stream',s=>{
@@ -245,7 +252,6 @@ function hCall(c){
     });
     c.on('close',endCall);c.on('error',endCall);
 }
-
 function startTimer(){
     callSec=0; clearInterval(callTimer);
     callTimer = setInterval(()=>{
@@ -255,7 +261,6 @@ function startTimer(){
         document.getElementById("callStatus").innerText=`通話中 ${m}:${s}`;
     },1000);
 }
-
 function endCall(){
     clearInterval(callTimer);callTimer=null;
     document.getElementById("callScreen").style.display="none";
@@ -264,5 +269,4 @@ function endCall(){
     if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
     if(callObj){callObj.close();callObj=null}
 }
-function save(){localStorage.setItem("db",JSON.stringify(db))}
 </script></body></html>
