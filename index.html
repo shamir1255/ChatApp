@@ -1,88 +1,106 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>WHOO</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
 <style>
-:root{--g:#25d366;--d:#1e2a38}body{margin:0;font-family:sans-serif;background:#7494c0;height:100vh;display:flex;flex-direction:column;font-size:13px;user-select:none}
-.h{background:var(--d);color:#fff;text-align:center;height:38px;line-height:38px;position:relative;font-weight:bold}
-.tab{flex:1;padding:10px;text-align:center;background:#fff;font-weight:bold;cursor:pointer;border-bottom:2px solid #fff}
-.tab.a{border-bottom-color:var(--g)}.view{flex:1;overflow-y:auto;background:#fff;display:none}.view.a{display:block}
-.item{display:flex;align-items:center;padding:10px;border-bottom:1px solid #f0f0f0;cursor:pointer}
-.av{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #ddd;background:#95a5a6}
-.box{background:#f8f9fa;padding:10px;border-radius:6px;border:1px solid #eee;margin:10px;display:flex;flex-direction:column;gap:6px}
-.btn{background:var(--d);color:#fff;border:0;padding:6px 12px;border-radius:4px;font-weight:bold;cursor:pointer}
-#chat{display:none;position:absolute;inset:0;background:#7494c0;z-index:20;flex-direction:column}
-.msg{padding:6px 10px;border-radius:12px;max-width:65%;word-break:break-all;background:#fff}.me{background:#85e29e}
-.st{font-size:9px;color:#fff;text-align:right;font-weight:bold;min-width:50px}
-.nb{position:absolute;top:4px;padding:4px 8px;border:0;border-radius:4px;color:#fff;font-weight:bold;cursor:pointer}
-#sp{position:fixed;inset:0;background:var(--g);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:bold;font-style:italic;transition:0.3s}
+:root{--g:#25d366;--d:#1e2a38;--b:#7494c0}body{margin:0;font-family:sans-serif;background:#f4f5f7;height:100vh;display:flex;flex-direction:column;font-size:13px;user-select:none}
+.h{background:var(--d);color:#fff;text-align:center;height:42px;line-height:42px;position:relative;font-weight:bold;font-size:15px}
+.tab-m{display:flex;background:#fff;border-bottom:1px solid #ddd}
+.tab{flex:1;padding:12px;text-align:center;font-weight:bold;cursor:pointer;color:#777;border-bottom:2px solid #fff}
+.tab.a{color:var(--d);border-bottom-color:var(--g)}
+.view{flex:1;overflow-y:auto;background:#fff;display:none}.view.a{display:block}
+.item{display:flex;align-items:center;padding:12px;border-bottom:1px solid #f9f9f9;cursor:pointer}
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid #ccc;background:#95a5a6;flex-shrink:0}
+.box{background:#f8f9fa;padding:12px;border-radius:8px;border:1px solid #eee;margin:10px;display:flex;flex-direction:column;gap:8px}
+.btn{background:var(--d);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-weight:bold;cursor:pointer}
+#chat{display:none;position:absolute;inset:0;background:var(--b);z-index:20;flex-direction:column}
+.msg-r{display:flex;width:100%;align-items:flex-end;gap:6px;margin:4px 0}
+.msg{padding:8px 12px;border-radius:14px;max-width:65%;word-break:break-all;background:#fff;font-size:14px}.me{background:#85e29e}
+.st{font-size:9px;color:#fff;font-weight:bold;min-width:45px;text-align:right}
+.nb{position:absolute;top:6px;padding:5px 10px;border:0;border-radius:4px;color:#fff;font-weight:bold;cursor:pointer}
+video,img{max-width:150px;max-height:150px;border-radius:8px;display:block;margin:2px 0}
+#call{display:none;position:fixed;inset:0;background:rgba(30,42,56,0.95);color:#fff;z-index:99;align-items:center;justify-content:center;flex-direction:column;font-size:18px}
 </style></head><body>
 
-<div id="sp">WHOOメール</div>
-<div id="call" style="display:none;position:fixed;inset:0;background:rgba(30,42,56,0.95);color:#fff;z-index:99;align-items:center;justify-content:center;flex-direction:column">📞 通話中...<br><button class="btn" style="background:#ff3b30;margin-top:20px" onclick="endCall()">終了</button></div>
-<div id="qro" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99;align-items:center;justify-content:center;flex-direction:column"><div id="reader" style="width:250px;background:#fff"></div><button class="btn" style="margin-top:10px" onclick="stopQR()">閉じる</button></div>
+<div id="call">📞 通話中...<br><button class="btn" style="background:#ff3b30;margin-top:20px" onclick="endCall()">終了</button></div>
 
-<div class="h" id="mt">トーク一覧</div>
-<div style="display:flex" id="ts"><div class="tab a" id="t1" onclick="tab(1)">トーク</div><div class="tab" id="t2" onclick="tab(2)">設定・追加</div></div>
+<div class="h" id="mt">トーク</div>
+<div class="tab-m" id="ts"><div class="tab a" id="t1" onclick="tab(1)">トーク</div><div class="tab" id="t2" onclick="tab(2)">設定・追加</div></div>
 <div id="v1" class="view a"></div>
 <div id="v2" class="view">
-    <div class="box" style="align-items:center"><input type="file" id="ai" accept="image/*" style="display:none" onchange="upAv(this)"><img id="mv" class="av" style="width:60px;height:60px;cursor:pointer" onclick="document.getElementById('ai').click()"><div>コード: <strong id="mc"></strong></div></div>
-    <div class="box">名前:<input id="ni" onchange="upNm()"></div>
-    <div class="box">友達追加:<div style="display:flex;gap:4px"><input id="fi" placeholder="3桁" maxlength="3"><button class="btn" onclick="addF()">追加</button></div><button class="btn" style="background:var(--g)" onclick="startQR()">📷 QRスキャン</button><div style="text-align:center;margin-top:5px" id="qrc"></div></div>
-    <div class="box"><button class="btn" style="background:#ff3b30" onclick="localStorage.clear();location.reload()">全消去</button></div>
+    <div class="box" style="align-items:center"><input type="file" id="ai" accept="image/*" style="display:none" onchange="upAv(this)"><img id="mv" class="av" style="width:65px;height:65px;cursor:pointer" onclick="document.getElementById('ai').click()"><div>マイコード: <strong id="mc"></strong></div></div>
+    <div class="box">名前:<input id="ni" style="padding:6px" onchange="upNm()"></div>
+    <div class="box">友達の番号で追加:<div style="display:flex;gap:4px"><input id="fi" placeholder="3桁の番号" maxlength="3" style="padding:6px;flex:1"><button class="btn" onclick="addF()">追加</button></div></div>
 </div>
 
 <div id="chat">
-    <div class="h"><button class="nb" style="left:6px" onclick="closeC()">◀</button><button class="nb" style="left:40px;background:#ff3b30" onclick="delF()">削除</button><span id="ct"></span><button class="nb" style="right:6px;background:var(--g)" onclick="startCall()">📞</button></div>
-    <div id="cb" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px"></div>
-    <div style="padding:10px;background:#fff;display:flex;gap:5px"><input type="file" id="ii" accept="image/*" style="display:none" onchange="sdImg(this)"><button class="btn" onclick="document.getElementById('ii').click()">📷</button><input id="mi" placeholder="入力..." onkeypress="if(event.key==='Enter')sdMsg()"><button class="btn" onclick="sdMsg()">送信</button></div>
+    <div class="h"><button class="nb" style="left:6px;background:#555" onclick="closeC()">◀</button><button class="nb" style="left:50px;background:#ff3b30" onclick="delF()">削除</button><span id="ct"></span><button class="nb" style="right:6px;background:var(--g)" onclick="startCall()">📞通話</button></div>
+    <div id="cb" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column"></div>
+    <div style="padding:10px;background:#fff;display:flex;gap:6px;align-items:center">
+        <input type="file" id="ii" accept="image/*,video/*" style="display:none" onchange="sdMedia(this)">
+        <button class="btn" style="background:#3498db" onclick="document.getElementById('ii').click()">📷</button>
+        <input id="mi" placeholder="メッセージを入力..." style="flex:1;padding:8px" onkeypress="if(event.key==='Enter')sdMsg()">
+        <button class="btn" style="background:var(--g)" onclick="sdMsg()">送信</button>
+    </div>
 </div>
 
 <script>
-const PFX="sm_wh_",def="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-4-8-4z'/></svg>";
+const PFX="wh__",def="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-4-8-4z'/></svg>";
 let myC=localStorage.getItem("c")||Math.floor(100+Math.random()*900).toString(),myN=localStorage.getItem("n")||"ユーザー("+myC+")",myA=localStorage.getItem("a")||def;
 localStorage.setItem("c",myC);document.getElementById("mc").innerText=myC;document.getElementById("ni").value=myN;document.getElementById("mv").src=myA;
-let peer=new Peer(PFX+myC),conns={},db=JSON.parse(localStorage.getItem("db")||"{}"),ac=null,stream=null,callObj=null,qrS=null;
-setTimeout(()=>{const s=document.getElementById("sp");s.style.opacity="0";setTimeout(()=>s.style.display="none",300)},1000);
+let peer=new Peer(PFX+myC),conns={},db=JSON.parse(localStorage.getItem("db")||"{}"),ac=null,stream=null,callObj=null;
 
-peer.on('open',()=>{Object.keys(db).forEach(c=>tryC(c));new QRCode(document.getElementById("qrc"),{text:myC,width:100,height:100})});
+peer.on('open',()=>{ Object.keys(db).forEach(c=>tryC(c)); rList(); });
 peer.on('connection',c=>setup(c,c.peer.replace(PFX,"")));
-peer.on('call',async call=>{if(confirm("📞 着信！出ますか？")){try{stream=await navigator.mediaDevices.getUserMedia({audio:true});call.answer(stream);hCall(call)}catch(e){}}else call.close()});
+peer.on('call',async call=>{if(confirm("📞 通話着信！出ますか？")){try{stream=await navigator.mediaDevices.getUserMedia({audio:true});call.answer(stream);hCall(call)}catch(e){}}else call.close()});
 
-function tryC(c){try{setup(peer.connect(PFX+c,{reliable:true}),c)}catch(e){}}
-function setup(c,code){if(!c)return;c.on('open',()=>{conns[code]=c;db[code]=db[code]||{code:code,name:"友達("+code+")",avatar:def,history:[],unread:0};c.send({type:'prof',name:myN,avatar:myA});rList()});
-c.on('data',d=>{if(d.type==='prof'){if(db[code]){db[code].name=d.name;db[code].avatar=d.avatar||def;save();rList()}if(ac===code)document.getElementById("ct").innerText=d.name;}
-else if(d.type==='msg'){if(!db[code]||db[code].history.some(m=>m.id===d.id))return;db[code].history.push(d);if(ac===code)c.send({type:'read',t:Date.now()});else db[code].unread++;save();rList();if(ac===code)rMsgs();}
-else if(d.type==='read'&&db[code]){db[code].history.forEach(m=>{if(m.me&&!m.read)m.read=d.t});save();if(ac===code)rMsgs()}});
-c.on('close',()=>{delete conns[code];rList()});c.on('error',()=>{delete conns[code];rList()})}
+function tryC(c){if(!conns[c])try{setup(peer.connect(PFX+c,{reliable:true}),c)}catch(e){}}
+function setup(c,code){if(!c)return;
+    c.on('open',()=>{conns[code]=c;db[code]=db[code]||{code:code,name:"友達("+code+")",avatar:def,history:[],unread:0};
+        c.send({type:'prof',name:myN,avatar:myA});
+        // 📥 バックグラウンド中に溜まった未送信メッセージがあれば、接続成功時に一気に送信
+        let queue=JSON.parse(localStorage.getItem("q_"+code)||"[]");
+        if(queue.length>0){queue.forEach(m=>c.send(m));localStorage.removeItem("q_"+code)}
+        rList();if(ac===code)openC(code);
+    });
+    c.on('data',d=>{
+        if(d.type==='prof'){db[code].name=d.name;db[code].avatar=d.avatar||def;save();rList()}
+        else if(d.type==='msg'){if(db[code].history.some(m=>m.id===d.id))return;db[code].history.push(d);if(ac===code)c.send({type:'read',id:d.id});else db[code].unread++;save();rList();if(ac===code)rMsgs();}
+        else if(d.type==='read'&&db[code]){db[code].history.forEach(m=>{if(m.id===d.id)m.read=true});save();if(ac===code)rMsgs()}
+    });
+    c.on('close',()=>{delete conns[code];rList()});c.on('error',()=>{delete conns[code];rList()});
+}
 
-function upAv(i){if(!i.files||!i.files[0])return;let r=new FileReader();r.onload=e=>{let img=new Image();img.src=e.target.result;img.onload=()=>{let cv=document.createElement('canvas');cv.width=100;cv.height=100;cv.getContext('2d').drawImage(img,0,0,100,100);myA=cv.toDataURL('image/jpeg',0.7);localStorage.setItem("a",myA);document.getElementById("mv").src=myA;upP()}};r.readAsDataURL(i.files[0])}
+function upAv(i){if(!i.files[0])return;let r=new FileReader();r.onload=e=>{let img=new Image();img.src=e.target.result;img.onload=()=>{let cv=document.createElement('canvas');cv.width=100;cv.height=100;cv.getContext('2d').drawImage(img,0,0,100,100);myA=cv.toDataURL('image/jpeg',0.6);localStorage.setItem("a",myA);document.getElementById("mv").src=myA;upP()}};r.readAsDataURL(i.files[0])}
 function upNm(){myN=document.getElementById("ni").value.trim()||"ユーザー("+myC+")";localStorage.setItem("n",myN);upP()}
 function upP(){Object.keys(conns).forEach(c=>{if(conns[c]?.open)conns[c].send({type:'prof',name:myN,avatar:myA})})}
-function tab(n){document.getElementById("v1").classList.toggle("a",n===1);document.getElementById("v2").classList.toggle("a",n===2);document.getElementById("t1").classList.toggle("a",n===1);document.getElementById("t2").classList.toggle("a",n===2);document.getElementById("mt").innerText=n===1?"トーク一覧":"設定・追加";if(n===1)rList()}
-function addF(){let c=document.getElementById("fi").value.trim();if(c.length===3&&c!==myC&&!db[c])tryC(c);document.getElementById("fi").value='';tab(1)}
+function tab(n){document.getElementById("v1").classList.toggle("a",n===1);document.getElementById("v2").classList.toggle("a",n===2);document.getElementById("t1").classList.toggle("a",n===1);document.getElementById("t2").classList.toggle("a",n===2);if(n===1)rList()}
+function addF(){let c=document.getElementById("fi").value.trim();if(c.length===3&&c!==myC&&!db[c]){db[c]={code:c,name:"友達("+c+")",avatar:def,history:[],unread:0};save();tryC(c)}document.getElementById("fi").value='';tab(1)}
 function delF(){if(confirm("削除しますか？")){if(conns[ac])try{conns[ac].close()}catch(e){}delete db[ac];delete conns[ac];save();closeC()}}
 
-function rList(){let c=document.getElementById("v1");c.innerHTML="";Object.keys(db).forEach(k=>{let f=db[k],on=conns[k]?.open,l=f.history[f.history.length-1],txt=l?(l.img?"[写真]":l.txt):"履歴なし";
-c.innerHTML+=`<div class="item" onclick="openC('${k}')"><div style="position:relative;margin-right:10px"><img class="av" src="${f.avatar}" style="border-color:${on?'#25d366':'#95a5a6'}">${f.unread?`<div style="position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;border-radius:10px;min-width:15px;height:15px;font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid #fff">${f.unread}</div>`:''}</div><div style="flex:1"><b>${f.name}</b><br><span style="color:#888;font-size:11px">${txt}</span></div></div>`})}
-function openC(c){if(!db[c])return;ac=c;document.getElementById("chat").style.display="flex";document.getElementById("ts").style.display="none";document.getElementById("ct").innerText=db[c].name;db[c].unread=0;save();if(conns[c]?.open)conns[c].send({type:'read',t:Date.now()});rMsgs()}
-function closeC(){ac=null;document.getElementById("chat").style.display="none";document.getElementById("ts").style.display="flex";tab(1)}
+function rList(){let c=document.getElementById("v1");c.innerHTML="";Object.keys(db).forEach(k=>{let f=db[k],on=conns[k]?.open,l=f.history[f.history.length-1],txt=l?(l.isV?"[動画]":(l.isI?"[画像]":l.txt)):"履歴なし";
+c.innerHTML+=`<div class="item" onclick="openC('${k}')"><img class="av" src="${f.avatar}" style="margin-right:10px;border-color:${on?'#25d366':'#95a5a6'}"><div style="flex:1"><b>${f.name}</b><br><span style="color:#888;font-size:11px">${txt}</span></div>${f.unread?`<div style="background:#ff3b30;color:#fff;border-radius:10px;padding:2px 6px;font-size:10px">${f.unread}</div>`:''}</div>`})}
+function openC(c){ac=c;document.getElementById("chat").style.display="flex";document.getElementById("ts").style.display="none";document.getElementById("ct").innerText=db[c].name;db[c].unread=0;save();if(conns[c]?.open)db[c].history.forEach(m=>{if(!m.me)conns[c].send({type:'read',id:m.id})});rMsgs()}
+function closeC(){ac=null;document.getElementById("chat").style.display="none";document.getElementById("ts").style.display="flex";rList()}
 
-function sdMsg(){let i=document.getElementById("mi"),t=i.value.trim();if(!t)return;exSd(t,false);i.value=''}
-function sdImg(i){if(!i.files||!i.files[0])return;let r=new FileReader();r.onload=e=>{let img=new Image();img.src=e.target.result;img.onload=()=>{let cv=document.createElement('canvas'),max=400,w=img.width,h=img.height;if(w>h){if(w>max){h*=max/w;w=max}}else{if(h>max){w*=max/h;h=max}}cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);exSd(cv.toDataURL('image/jpeg',0.6),true)}};r.readAsDataURL(i.files[0]);i.value=''}
-function exSd(p,isI){let id=Math.random().toString(36).substring(2,9),m={id:id,me:true,txt:p,img:isI,read:null};db[ac].history.push(m);save();rMsgs();if(conns[ac]?.open)conns[ac].send({id:id,type:'msg',txt:p,img:isI});setTimeout(()=>rList(),100)}
+function sdMsg(){let i=document.getElementById("mi"),t=i.value.trim();if(!t)return;exSd({id:Math.random().toString(36).substring(2,9),type:'msg',me:true,txt:t},ac);i.value=''}
+function sdMedia(i){if(!i.files[0])return;let file=i.files[0],isV=file.type.includes('video'),r=new FileReader();r.onload=e=>{exSd({id:Math.random().toString(36).substring(2,9),type:'msg',me:true,txt:e.target.result,isI:!isV,isV:isV},ac)};r.readAsDataURL(file);i.value=''}
+function exSd(m,code){db[code].history.push(m);save();rMsgs();
+    if(conns[code]?.open){try{conns[code].send(m)}catch(e){}}
+    else{ // 📴 相手がオフライン(バックグラウンド)なら、ローカルの送信待ちキューに入れる
+        let queue=JSON.parse(localStorage.getItem("q_"+code)||"[]");queue.push(m);localStorage.setItem("q_"+code,JSON.stringify(queue));
+        tryC(code); // バックグラウンドからの復帰を信じて再接続を試みる
+    }
+}
 
-function rMsgs(){let b=document.getElementById('cb');b.innerHTML="";let now=Date.now();db[ac].history.forEach(m=>{let r=document.createElement('div');r.style.display="flex";r.style.justifyContent=m.me?"flex-end":"flex-start";r.style.alignItems="flex-end";r.style.gap="6px";
+function rMsgs(){let b=document.getElementById('cb');b.innerHTML="";db[ac].history.forEach(m=>{let r=document.createElement('div');r.className="msg-r";r.style.justifyContent=m.me?"flex-end":"flex-start";
 if(!m.me){let img=document.createElement('img');img.className="av";img.style.width="28px";img.style.height="28px";img.src=db[ac].avatar;r.appendChild(img)}
-if(m.me){let s=document.createElement('div');s.className="st";if(m.read){let d=Math.floor((now-m.read)/1000);s.innerText=d<5?"既読\n(今)":(d<60?`既読\n(${d}秒前)`:`既読\n(${Math.floor(d/60)}分前)`)}else s.innerText="未読";r.appendChild(s)}
-let e=document.createElement('div');e.className=`msg ${m.me?'me':''}`;if(m.img)e.innerHTML=`<img src="${m.txt}" style="max-width:130px;max-height:130px;border-radius:8px" onclick="window.open('${m.txt}')">`;else e.innerText=m.txt;r.appendChild(e);b.appendChild(r)});b.scrollTop=b.scrollHeight}
+if(m.me){let s=document.createElement('div');s.className="st";s.innerText=m.read?"既読":"未読";r.appendChild(s)}
+let e=document.createElement('div');e.className=`msg ${m.me?'me':''}`;
+if(m.isV)e.innerHTML=`<video src="${m.txt}" controls playsinline>`;else if(m.isI)e.innerHTML=`<img src="${m.txt}" onclick="window.open('${m.txt}')">`;else e.innerText=m.txt;
+r.appendChild(e);b.appendChild(r)});b.scrollTop=b.scrollHeight}
 
 async function startCall(){if(!conns[ac]?.open){alert("相手がオフラインです");return}try{stream=await navigator.mediaDevices.getUserMedia({audio:true});hCall(peer.call(PFX+ac,stream))}catch(e){}}
 function hCall(c){callObj=c;document.getElementById("call").style.display="flex";c.on('stream',s=>{let a=document.createElement('audio');a.srcObject=s;a.play()});c.on('close',endCall);c.on('error',endCall)}
 function endCall(){document.getElementById("call").style.display="none";if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}if(callObj){callObj.close();callObj=null}}
-
-function startQR(){document.getElementById("qro").style.display="flex";qrS=new Html5Qrcode("reader");qrS.start({facingMode:"environment"},{fps:10,qrbox:180},msg=>{if(msg.length===3){document.getElementById("fi").value=msg;addF();stopQR()}}).catch(()=>{alert("カメラエラー");stopQR()})}
-function stopQR(){if(qrS){qrS.stop().then(()=>{document.getElementById("qro").style.display="none"})}}
 function save(){localStorage.setItem("db",JSON.stringify(db))}
 </script></body></html>
